@@ -1,0 +1,31 @@
+<mujoco model="ece3162_single_obstacle">
+  <compiler angle="radian"/>
+  <option timestep="0.02" gravity="0 0 0"/>
+  <visual><global azimuth="135" elevation="-25"/><quality shadowsize="2048"/></visual>
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.18 0.2 0.22" rgb2="0.25 0.27 0.29" width="512" height="512"/>
+    <material name="floor_mat" texture="grid" texrepeat="12 8" reflectance="0.08"/>
+  </asset>
+  <worldbody>
+    <light pos="3 -2 7" dir="0.1 0.2 -1" diffuse="0.9 0.9 0.9"/>
+    <geom name="floor" type="plane" pos="3.5 0 0" size="5 4 0.1" material="floor_mat"/>
+    <geom name="blocking_wall" type="box" pos="1.5 0 1" size="0.5 1 1"
+          rgba="0.65 0.18 0.12 1"/>
+    <geom name="pillar_left" type="cylinder" pos="5 2 0.8" size="0.35 0.8" rgba="0.25 0.35 0.7 1"/>
+    <geom name="pillar_right" type="cylinder" pos="1.5 -2 0.8" size="0.35 0.8" rgba="0.25 0.35 0.7 1"/>
+    <geom name="wall_north" type="box" pos="3.5 2.9 0.5" size="4.5 0.1 0.5" rgba="0.3 0.3 0.35 1"/>
+    <geom name="wall_south" type="box" pos="3.5 -2.9 0.5" size="4.5 0.1 0.5" rgba="0.3 0.3 0.35 1"/>
+    <site name="start_marker" pos="0 0 0.75" type="sphere" size="0.10" rgba="0 0.9 0.1 0.7"/>
+    <site name="goal_marker" pos="6 0 0.75" type="sphere" size="0.14" rgba="1 0 1 0.9"/>
+    <site name="current_target" pos="0 0 -10" type="sphere" size="0.08" rgba="1 1 0 0.9"/>
+    <site name="path_00" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_01" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_02" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_03" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_04" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_05" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_06" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <site name="path_07" pos="0 0 -10" size="0.035" rgba="0.1 0.9 1 0.8"/>
+    <include file="../models/f450/f450.xml"/>
+  </worldbody>
+</mujoco>

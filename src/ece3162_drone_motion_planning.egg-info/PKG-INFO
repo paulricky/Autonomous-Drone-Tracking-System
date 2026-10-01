@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: ece3162-drone-motion-planning
+Version: 0.1.0
+Summary: Hand-guided autonomous F450 motion-planning research platform
+Requires-Python: >=3.11
+Requires-Dist: numpy==1.26.4
+Requires-Dist: scipy==1.16.2
+Requires-Dist: PyYAML==6.0.3
+Requires-Dist: matplotlib==3.10.6
+Requires-Dist: pytest==8.4.2
+Requires-Dist: mujoco==3.3.7
+Requires-Dist: opencv-contrib-python==4.11.0.86
+Requires-Dist: mediapipe==0.10.21; platform_machine != "aarch64"

@@ -1,0 +1,11 @@
+name: multi_obstacle
+map_min: [-1.0, -3.0, 0.0]
+map_max: [8.0, 3.0, 4.0]
+resolution: 0.25
+start: [0.0, 0.0, 0.75]
+goal: [7.0, 0.0, 1.0]
+obstacles:
+  - {lower: [1.5, -2.0, 0.0], upper: [2.25, 0.5, 2.0]}
+  - {lower: [3.0, -0.5, 0.0], upper: [3.75, 2.0, 2.5]}
+  - {lower: [4.75, -2.0, 0.0], upper: [5.5, 0.5, 3.0]}
+

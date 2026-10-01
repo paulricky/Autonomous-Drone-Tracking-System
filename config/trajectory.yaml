@@ -1,0 +1,5 @@
+max_xy_velocity: 1.0
+max_z_velocity: 0.5
+max_acceleration: 0.75
+setpoint_rate_hz: 20.0
+

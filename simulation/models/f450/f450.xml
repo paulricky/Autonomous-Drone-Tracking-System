@@ -1,0 +1,42 @@
+<mujocoinclude>
+  <!-- Lightweight Stage-A F450 approximation. Body axes follow FLU visually:
+       the red nose points +x, green arm/marker points +y, and +z is up. -->
+  <body name="f450" mocap="true" pos="0 0 0.75">
+    <geom name="f450_collision" type="sphere" size="0.28" rgba="0.15 0.15 0.18 0.12"
+          contype="1" conaffinity="1" group="3"/>
+    <geom name="center_body" type="box" size="0.11 0.09 0.035" rgba="0.12 0.12 0.15 1"
+          contype="0" conaffinity="0"/>
+    <geom name="arm_fl" type="capsule" fromto="0 0 0 0.225 0.225 0" size="0.014"
+          rgba="0.8 0.1 0.1 1" contype="0" conaffinity="0"/>
+    <geom name="arm_fr" type="capsule" fromto="0 0 0 0.225 -0.225 0" size="0.014"
+          rgba="0.8 0.1 0.1 1" contype="0" conaffinity="0"/>
+    <geom name="arm_rl" type="capsule" fromto="0 0 0 -0.225 0.225 0" size="0.014"
+          rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0"/>
+    <geom name="arm_rr" type="capsule" fromto="0 0 0 -0.225 -0.225 0" size="0.014"
+          rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0"/>
+    <geom name="motor_fl" type="cylinder" pos="0.225 0.225 0" size="0.032 0.025"
+          rgba="0.18 0.18 0.2 1" contype="0" conaffinity="0"/>
+    <geom name="motor_fr" type="cylinder" pos="0.225 -0.225 0" size="0.032 0.025"
+          rgba="0.18 0.18 0.2 1" contype="0" conaffinity="0"/>
+    <geom name="motor_rl" type="cylinder" pos="-0.225 0.225 0" size="0.032 0.025"
+          rgba="0.18 0.18 0.2 1" contype="0" conaffinity="0"/>
+    <geom name="motor_rr" type="cylinder" pos="-0.225 -0.225 0" size="0.032 0.025"
+          rgba="0.18 0.18 0.2 1" contype="0" conaffinity="0"/>
+    <geom name="rotor_fl" type="cylinder" pos="0.225 0.225 0.035" size="0.12 0.003"
+          rgba="0.25 0.25 0.3 0.6" contype="0" conaffinity="0"/>
+    <geom name="rotor_fr" type="cylinder" pos="0.225 -0.225 0.035" size="0.12 0.003"
+          rgba="0.25 0.25 0.3 0.6" contype="0" conaffinity="0"/>
+    <geom name="rotor_rl" type="cylinder" pos="-0.225 0.225 0.035" size="0.12 0.003"
+          rgba="0.25 0.25 0.3 0.6" contype="0" conaffinity="0"/>
+    <geom name="rotor_rr" type="cylinder" pos="-0.225 -0.225 0.035" size="0.12 0.003"
+          rgba="0.25 0.25 0.3 0.6" contype="0" conaffinity="0"/>
+    <geom name="front_arrow" type="capsule" fromto="0.08 0 0.015 0.30 0 0.015"
+          size="0.025" rgba="1 0.05 0.02 1" contype="0" conaffinity="0"/>
+    <geom name="front_tip" type="sphere" pos="0.31 0 0.015" size="0.045"
+          rgba="1 0.05 0.02 1" contype="0" conaffinity="0"/>
+    <!-- MuJoCo cameras look along local -z. Rotate them to look along body +x. -->
+    <camera name="stereo_left" pos="0.12 0.045 -0.015" xyaxes="0 -1 0 0 0 1" fovy="70"/>
+    <camera name="stereo_right" pos="0.12 -0.045 -0.015" xyaxes="0 -1 0 0 0 1" fovy="70"/>
+    <site name="body_origin" pos="0 0 0" size="0.012" rgba="1 1 1 1"/>
+  </body>
+</mujocoinclude>

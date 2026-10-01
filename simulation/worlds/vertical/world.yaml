@@ -1,0 +1,9 @@
+name: vertical
+map_min: [-1.0, -3.0, 0.0]
+map_max: [8.0, 3.0, 5.0]
+resolution: 0.25
+start: [0.0, 0.0, 0.75]
+goal: [7.0, 0.0, 0.75]
+obstacles:
+  - {lower: [2.0, -3.0, 0.0], upper: [5.0, 3.0, 2.0]}
+

@@ -1,0 +1,8 @@
+voxel_resolution: 0.25
+map_min: [-1.0, -3.0, 0.0]
+map_max: [8.0, 3.0, 4.0]
+local_map_radius: 8.0
+drone_radius: 0.28
+safety_margin: 0.22
+unknown_space_policy: occupied
+

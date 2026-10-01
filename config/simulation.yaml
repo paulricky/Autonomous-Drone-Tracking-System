@@ -1,0 +1,7 @@
+world: single_obstacle
+mode: ground_truth
+start: [0.0, 0.0, 0.75]
+goal: [6.0, 0.0, 0.75]
+animate: false
+save_figure: null
+

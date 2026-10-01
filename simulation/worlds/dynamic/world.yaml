@@ -1,0 +1,11 @@
+name: dynamic
+map_min: [-1.0, -3.0, 0.0]
+map_max: [8.0, 3.0, 4.0]
+resolution: 0.25
+start: [0.0, 0.0, 1.0]
+goal: [7.0, 0.0, 1.0]
+obstacles:
+  - {lower: [3.0, -2.0, 0.0], upper: [3.75, -0.5, 2.0]}
+dynamic_obstacles:
+  - {lower: [4.5, -0.5, 0.0], upper: [5.0, 0.5, 2.0], appears_at_s: 3.0}
+

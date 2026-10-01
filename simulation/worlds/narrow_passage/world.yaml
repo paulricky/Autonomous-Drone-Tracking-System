@@ -1,0 +1,10 @@
+name: narrow_passage
+map_min: [-1.0, -3.0, 0.0]
+map_max: [8.0, 3.0, 3.0]
+resolution: 0.20
+start: [0.0, 0.0, 1.0]
+goal: [7.0, 0.0, 1.0]
+obstacles:
+  - {lower: [2.5, -3.0, 0.0], upper: [4.5, -0.75, 3.0]}
+  - {lower: [2.5, 0.75, 0.0], upper: [4.5, 3.0, 3.0]}
+

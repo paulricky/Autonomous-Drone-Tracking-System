@@ -1,0 +1,15 @@
+smoothing_alpha: 0.35
+dead_zone: 0.08
+goal_sensitivity: [3.0, 3.0, 2.0]
+goal_step: 3.0
+max_goal_distance: 3.0
+max_altitude: 3.0
+min_altitude: 0.4
+stable_frames: 4
+goal_change_threshold: 0.25
+replan_cooldown_s: 0.75
+hand_loss_timeout_s: 0.5
+hover_timeout_s: 1.5
+invert_x: false
+invert_y: false
+invert_z: false

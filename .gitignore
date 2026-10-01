@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.idea/
+.DS_Store
+.venv/
+env/
+logs/*.csv
+benchmark_results/*
+!benchmark_results/.gitkeep
+calibration_data/**/*.npz
+calibration_data/**/*.json
+

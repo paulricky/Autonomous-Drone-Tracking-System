@@ -1,0 +1,13 @@
+planner: astar
+connectivity: 26
+heuristic_weight: 1.0
+allow_unknown: false
+show_explored: true
+shortcut_attempts: 200
+random_seed: 3162
+rrt_step_size: 0.4
+rrt_goal_bias: 0.10
+rrt_max_iterations: 5000
+rrt_star_radius: 1.0
+goal_tolerance: 0.35
+

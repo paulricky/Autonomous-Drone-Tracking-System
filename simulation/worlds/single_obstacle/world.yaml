@@ -1,0 +1,14 @@
+name: single_obstacle
+description: A wall blocks the direct route; the drone must route around or above it.
+map_min: [-1.0, -3.0, 0.0]
+map_max: [8.0, 3.0, 4.0]
+resolution: 0.25
+start: [0.0, 0.0, 0.75]
+goal: [6.0, 0.0, 0.75]
+obstacles:
+  - lower: [1.0, -1.0, 0.0]
+    upper: [2.0, 1.0, 2.0]
+  - lower: [4.65, 1.65, 0.0]
+    upper: [5.35, 2.35, 1.6]
+  - lower: [1.15, -2.35, 0.0]
+    upper: [1.85, -1.65, 1.6]

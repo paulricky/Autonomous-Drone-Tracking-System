@@ -1,0 +1,12 @@
+hardware_mode: false
+takeoff_altitude: 1.5
+max_altitude: 3.0
+max_xy_speed: 1.5
+max_z_speed: 0.75
+geofence_radius: 10.0
+timeouts:
+  communication_s: 1.0
+  stereo_s: 0.5
+  mapping_s: 1.0
+  planner_s: 5.0
+
