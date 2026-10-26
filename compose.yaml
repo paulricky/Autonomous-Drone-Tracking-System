@@ -1,0 +1,8 @@
+services:
+  ece3162:
+    build: .
+    network_mode: host
+    environment:
+      ROS_DOMAIN_ID: "42"
+    working_dir: /workspace
+    command: ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && source install/setup.bash && ros2 launch ece3162_bringup diagnostics.launch.py"]

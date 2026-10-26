@@ -1,0 +1,14 @@
+.git
+.idea
+.pytest_cache
+.venv
+**/__pycache__
+**/*.pyc
+archive
+benchmark_results
+calibration_data
+logs
+results
+build
+install
+log

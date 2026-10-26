@@ -30,10 +30,10 @@ ece3162-sim = "ece3162.cli:simulation_main"
 ece3162-benchmark = "ece3162.cli:benchmark_main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "src/ece3162"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src/ece3162"]
 include = [
     "ece3162*",
 ]

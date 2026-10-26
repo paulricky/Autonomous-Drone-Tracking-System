@@ -5,6 +5,10 @@ __pycache__/
 .coverage
 .idea/
 .DS_Store
+build/
+install/
+log/
+compile_commands.json
 .venv/
 env/
 *.whl

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<package format="3"><name>ece3162_bringup</name><version>0.2.0</version>
+<description>Launch, parameters, and RViz configuration for ECE3162.</description>
+<maintainer email="maintainer@example.com">ECE3162 maintainers</maintainer><license>MIT</license>
+<buildtool_depend>ament_python</buildtool_depend><exec_depend>launch</exec_depend><exec_depend>launch_ros</exec_depend><exec_depend>ament_index_python</exec_depend><exec_depend>lifecycle_msgs</exec_depend>
+<exec_depend>ece3162_core</exec_depend><exec_depend>ece3162_mission</exec_depend>
+<test_depend>python3-pytest</test_depend>
+<export><build_type>ament_python</build_type></export></package>

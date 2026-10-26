@@ -1,5 +1,36 @@
 # ECE 3162: Quadcopter Motion Planning and Duckiedrone Integration
 
+This repository is one ROS 2 Jazzy workspace for autonomous Duckiedrone
+navigation. Performance- and timing-sensitive code is migrating behind C++17
+libraries; Python remains responsible for mission coordination, experiments,
+analysis, and the existing deterministic regression simulations. Physical
+hardware output, arming, takeoff, and motor commands are disabled and absent by
+default.
+
+## ROS 2 Jazzy quick start
+
+On macOS, open the repository in VS Code and choose **Dev Containers: Reopen in
+Container**. This builds Ubuntu 24.04 with ROS 2 Jazzy; the repository may stay
+in `~/PycharmProjects`. Docker Desktop cannot be assumed to pass through USB
+cameras or serial hardware, so use a native Ubuntu machine or VM for hardware
+bench work.
+
+```bash
+source /opt/ros/jazzy/setup.bash
+rosdep install --from-paths src --ignore-src -r -y
+colcon list --base-paths src
+colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
+source install/setup.bash
+colcon test --base-paths src
+colcon test-result --verbose
+ros2 launch ece3162_bringup diagnostics.launch.py
+```
+
+The launch is deliberately inert: it publishes status but does not activate,
+open, arm, or command flight hardware. See
+[ROS 2 architecture](docs/ROS2_ARCHITECTURE.md) and the
+[migration report](docs/MIGRATION_REPORT.md).
+
 ## Recovered Duckiedrone simulation
 
 The repository now includes a hardware-disabled, ROS-independent integration
@@ -99,15 +130,15 @@ config/             YAML settings
 scripts/            executable tools and simulations
 simulation/models/  MuJoCo F450 MJCF
 simulation/worlds/  planner YAML and MuJoCo worlds
-src/ece3162/common/        frame-aware shared messages
-src/ece3162/planning/      geometric and kinodynamic planning
-src/ece3162/trajectory/    time parameterization and B-splines
-src/ece3162/control/       waypoint/PID/trajectory feedback control
-src/ece3162/perception/    stereo acquisition, calibration, and depth
-src/ece3162/localization/  state health and estimator interfaces
-src/ece3162/mapping/       voxel maps, inflation, and ray updates
-src/ece3162/simulation/    closed-loop and MuJoCo runners
-src/ece3162/hardware/      inert MSP framing and guarded adapters
+src/ece3162/ece3162/common/        frame-aware shared messages
+src/ece3162/ece3162/planning/      geometric and kinodynamic planning
+src/ece3162/ece3162/trajectory/    time parameterization and B-splines
+src/ece3162/ece3162/control/       waypoint/PID/trajectory feedback control
+src/ece3162/ece3162/perception/    stereo acquisition, calibration, and depth
+src/ece3162/ece3162/localization/  state health and estimator interfaces
+src/ece3162/ece3162/mapping/       voxel maps, inflation, and ray updates
+src/ece3162/ece3162/simulation/    closed-loop and MuJoCo runners
+src/ece3162/ece3162/hardware/      inert MSP framing and guarded adapters
 archive/                   recovered provenance snapshots
 tests/              hardware-free tests
 results/            generated metrics and figures

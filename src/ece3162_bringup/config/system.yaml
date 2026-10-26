@@ -1,0 +1,12 @@
+/**:
+  ros__parameters:
+    use_sim_time: false
+    hardware_output_enabled: false
+hardware_monitor:
+  ros__parameters:
+    serial_device: ""
+    baud_rate: 115200
+    hardware_output_enabled: false
+mission_manager:
+  ros__parameters:
+    hardware_output_enabled: false

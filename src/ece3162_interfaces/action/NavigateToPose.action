@@ -1,0 +1,9 @@
+geometry_msgs/PoseStamped goal
+float32 position_tolerance
+---
+bool success
+string detail
+---
+geometry_msgs/PoseStamped current_pose
+float32 distance_remaining
+uint8 planner_state

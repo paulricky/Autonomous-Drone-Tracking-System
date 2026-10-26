@@ -1,0 +1,39 @@
+name: ROS 2 Jazzy CI
+on:
+  push:
+  pull_request:
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y python3-colcon-common-extensions python3-rosdep python3-pip python3-pytest
+          rosdep init 2>/dev/null || true
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y
+          python3 -m pip install --break-system-packages -e '.[dev]'
+      - name: Python regression tests
+        run: python3 -m pytest -q
+      - name: Build
+        shell: bash
+        run: source /opt/ros/jazzy/setup.bash && colcon list --base-paths src && colcon build --base-paths src --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release
+      - name: ROS tests
+        shell: bash
+        run: source /opt/ros/jazzy/setup.bash && source install/setup.bash && colcon test --base-paths src --event-handlers console_direct+ && colcon test-result --verbose
+      - name: Headless simulation smoke test
+        env: {MPLBACKEND: Agg}
+        run: python3 scripts/run_duckiedrone_sim.py --scenario baseline
+  arm64-source-build:
+    runs-on: ubuntu-24.04-arm
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate portable Python core
+        run: |
+          python3 -m pip install -e '.[dev]'
+          python3 -m pytest -q

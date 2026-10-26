@@ -1,0 +1,10 @@
+builtin_interfaces/Time stamp
+uint8 IDLE=0
+uint8 PLANNING=1
+uint8 TRACKING=2
+uint8 SUCCEEDED=3
+uint8 FAILED=4
+uint8 state
+float32 planning_latency_ms
+uint32 explored_states
+string detail

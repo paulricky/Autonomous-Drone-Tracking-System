@@ -1,0 +1,3 @@
+archive/** linguist-documentation
+results/** linguist-generated=true
+benchmark_results/** linguist-generated=true

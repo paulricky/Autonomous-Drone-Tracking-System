@@ -1,0 +1,8 @@
+builtin_interfaces/Time stamp
+bool connected
+bool hardware_output_enabled
+bool command_gate_open
+uint32 valid_packets
+uint32 invalid_packets
+float32 command_rate_hz
+string detail
