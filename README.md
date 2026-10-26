@@ -1,4 +1,4 @@
-# ECE 3162: Hand-Guided Autonomous F450 Quadcopter with Stereo-Vision Motion Planning
+# ECE 3162: Hand-Tracking F450 Quadcopter with Stereo-Vision Motion Planning and Autonomous CAS
 
 ## Project Overview
 
@@ -29,6 +29,7 @@ flowchart LR
   Q --> SM[Validated smoothing]
   SM --> T[Limited trajectory]
   T --> MJ[MuJoCo F450]
+  MJ --> HV[Hardware Validation]
 ```
 
 Frames are explicit. OpenCV camera is +x right, +y down, +z forward; body FLU
