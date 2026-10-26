@@ -1,0 +1,17 @@
+cameras:
+  backend: opencv_uvc
+  left_id: null
+  right_id: null
+  width: 1280
+  height: 720
+  requested_fps: 60
+  buffer_size: 4
+synchronization:
+  mode: software
+  max_timestamp_delta_s: 0.005
+  hardware_trigger_enabled: false
+stereo:
+  min_depth_m: 0.2
+  max_depth_m: 8.0
+  num_disparities: 128
+  block_size: 5

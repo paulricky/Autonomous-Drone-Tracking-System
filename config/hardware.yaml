@@ -1,0 +1,10 @@
+hardware_output_enabled: false
+automatic_arming_enabled: false
+automatic_takeoff_enabled: false
+serial:
+  device: null
+  baud: 115200
+  protocol: msp_v1_unverified
+camera_trigger:
+  enabled: false
+  gpio: null

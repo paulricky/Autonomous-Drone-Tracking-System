@@ -1,0 +1,14 @@
+target_altitude: 1.0
+horizontal_tolerance: 0.12
+vertical_tolerance: 0.08
+dwell_time: 0.10
+state_timeout: 0.30
+waypoint_timeout: 20.0
+mission_timeout: 120.0
+dt: 0.05
+position_gain: 1.8
+max_speed: 1.0
+max_acceleration: 1.5
+drone_radius: 0.28
+safety_margin: 0.12
+hardware_publishing_enabled: false

@@ -1,0 +1,8 @@
+frame: local_enu
+maximum_state_age_s: 0.25
+maximum_position_variance_m2: 0.25
+simulation:
+  feedback_delay_s: 0.04
+  position_noise_std_m: 0.003
+  velocity_noise_std_mps: 0.005
+physical_estimator: unconfigured

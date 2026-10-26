@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "planning_time_s": 7.558238389028702,
+  "expanded_states": 511,
+  "optimization_time_s": 5.028225199028384,
+  "global_path_length_m": 4.616181219645361,
+  "optimized_path_length_m": 4.511665493647869,
+  "executed_path_length_m": 6.087951261280084,
+  "rms_position_error_m": 0.06687395093999489,
+  "maximum_position_error_m": 0.20901595445807372,
+  "final_goal_error_m": 0.13433358277849147,
+  "mission_duration_s": 10.639999999999905,
+  "minimum_obstacle_clearance_m": 0.23657507430141023,
+  "collision_count": 0,
+  "saturation_fraction": 0.0,
+  "status": "complete",
+  "failure_reason": null,
+  "replanning_latency_s": 13.824101165053435,
+  "replan_count": 1,
+  "obstacle_appeared_at_s": 2.0
+}
