@@ -34,3 +34,20 @@ world with no obstacles reports minimum clearance as `null` (not applicable).
 
 IAPF is unavailable because no IAPF/MATLAB implementation is present. The
 runner intentionally offers only the verified A* option.
+# Native closed-loop scenarios
+
+Run `ros2 launch ece3162_bringup autonomy_sim.launch.py scenario:=<name>` after
+sourcing the Jazzy workspace. State evolves with the double-integrator
+equations and bounded acceleration/velocity; it is never assigned to a desired
+point. The tracker uses `state/estimate`, while truth is evaluation-only.
+`dynamic` inserts an obstacle at two seconds and revalidates the remaining
+curve before replanning.
+
+Deterministic non-wall-clock runs are available as `ros2 run ece3162_core
+navigation_demo free` (also `static`, `constrained`, and `no_path`).
+
+Failure regression coverage includes unreachable planning, optimizer rejection,
+stale localization, excessive tracking error, trajectory settling timeout, and
+action cancellation. The action smoke test is `python3
+scripts/test_navigation_action.py` while `autonomy_sim_node` runs with
+`auto_start:=false`.

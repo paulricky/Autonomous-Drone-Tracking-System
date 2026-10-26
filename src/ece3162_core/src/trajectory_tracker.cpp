@@ -14,7 +14,9 @@ std::optional<Command> TrajectoryTracker::update(double now, const Reference& re
   }
   Command out; double squared_error = 0.0;
   for (std::size_t i = 0; i < 3; ++i) {
-    if (!std::isfinite(state.position[i]) || !std::isfinite(state.velocity[i]) || !std::isfinite(ref.position[i])) {
+    if (!std::isfinite(state.position[i]) || !std::isfinite(state.velocity[i]) ||
+        !std::isfinite(ref.position[i]) || !std::isfinite(ref.velocity[i]) ||
+        !std::isfinite(ref.acceleration[i]) || !std::isfinite(ref.stamp)) {
       failure_reason_ = "non-finite state or reference"; return std::nullopt;
     }
     const double error = ref.position[i] - state.position[i]; squared_error += error * error;

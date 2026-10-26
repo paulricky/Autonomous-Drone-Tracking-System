@@ -112,3 +112,15 @@ planning 3.574–7.558 s, local optimization 0.255–5.028 s, tracking RMS
 ROS transport, Pi 5, camera, or aircraft results. Perception throughput,
 mapping update rate, peak memory, CPU percentage, and end-to-end latency remain
 unmeasured; no values are invented.
+# Phase 3 native planning update (2026-10-26)
+
+The simulation path now has native C++17 Kinodynamic A*, B-spline,
+EGO-inspired optimization, dynamics, and tracking components. Python remains
+as a numerical reference. The optimizer follows EGO-Planner's ESDF-free
+control-point cost decomposition, but is an adaptation using occupied-voxel
+nearest-point penalties and backtracking gradient descent, not the upstream
+rebound optimizer or topology search.
+
+Core classes contain no ROS types. New boundary messages are
+`TrajectoryPoint`, `TimedTrajectory`, `VehicleState`, and `ControlCommand`.
+Physical MSP output, arming, motors, and serial access remain excluded.

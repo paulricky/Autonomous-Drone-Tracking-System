@@ -1,0 +1,11 @@
+{
+  "environment": "ROS 2 Jazzy Docker Release build on macOS host, 2026-10-26",
+  "scenarios": {
+    "free": {"success": true, "planning_time_s": 0.000100125, "optimization_time_s": 0.00632008, "planned_length_m": 5.0, "traveled_m": 5.43608, "rms_error_m": 0.130079, "max_error_m": 0.382387, "final_error_m": 0.0439664, "mission_duration_s": 9.64, "collisions": 0, "velocity_violations": 0, "acceleration_violations": 0},
+    "static": {"success": true, "planning_time_s": 0.000480584, "optimization_time_s": 0.0195206, "planned_length_m": 5.3815, "traveled_m": 5.7058, "rms_error_m": 0.0694443, "max_error_m": 0.200721, "final_error_m": 0.0551787, "minimum_clearance_m": 0.429235, "mission_duration_s": 11.3, "collisions": 0, "velocity_violations": 0, "acceleration_violations": 0},
+    "constrained": {"success": true, "planning_time_s": 0.0171879, "optimization_time_s": 0.0320561, "planned_length_m": 6.6409, "traveled_m": 7.33509, "rms_error_m": 0.0913096, "max_error_m": 0.365286, "final_error_m": 0.0259482, "minimum_clearance_m": 0.403898, "mission_duration_s": 14.46, "collisions": 0, "velocity_violations": 0, "acceleration_violations": 0},
+    "dynamic": {"success": true, "planning_time_s": 0.001288312, "optimization_time_s": 0.004128672, "algorithm_replanning_latency_s": 0.005944047, "integrated_replanning_latency_s": 0.006262123, "replans": 1, "rms_error_m": 0.130847, "max_error_m": 0.421443, "final_error_m": 0.044264},
+    "no_path": {"success": false, "expected_failure": true, "reason": "expansion limit"},
+    "action_cancellation": {"goal_accepted": true, "cancel_responses": 1, "terminal_state": "cancelled:operator request"}
+  }
+}

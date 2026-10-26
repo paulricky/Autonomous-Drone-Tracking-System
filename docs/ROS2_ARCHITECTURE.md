@@ -55,3 +55,24 @@ serial transport.
 hardware monitor and mission status node. Lifecycle activation is deliberate,
 not automatic. Future full-system launch descriptions must retain the same
 false-by-default hardware parameter.
+# Native navigation simulation
+
+`autonomy_sim.launch.py` starts the inert hardware monitor and two C++ ROS
+nodes. `simulated_drone` subscribes `control/acceleration`, integrates bounded
+dynamics at 50 Hz, and publishes separate `state/ground_truth` and delayed,
+noisy `state/estimate` channels. `autonomy_pipeline` consumes only estimates,
+plans in local ENU `map`, and publishes `planning/trajectory`,
+`planning/status`, and `mission/status`.
+
+`TimedTrajectory` has an absolute ROS header start stamp and relative
+`time_from_start` samples. Position is metres, velocity m/s, and acceleration
+m/s². Estimate and command streams use sensor/best-effort depth-one QoS;
+trajectories are reliable and transient-local. A dynamic map change checks the
+remaining curve and triggers replacement only when affected. Failed replacement
+causes bounded braking, which is not a physical hover or landing guarantee.
+
+`navigate_to_pose` is a cancellable ROS 2 action. Set `auto_start:=false` when
+missions will arrive only through the action server; the launch demo defaults
+to its configured goal. Cancellation publishes a bounded braking reference,
+returns a canceled action result, and leaves the server available for a later
+goal.

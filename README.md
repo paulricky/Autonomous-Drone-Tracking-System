@@ -7,6 +7,22 @@ analysis, and the existing deterministic regression simulations. Physical
 hardware output, arming, takeoff, and motor commands are disabled and absent by
 default.
 
+Phase 3 adds a reusable native stack in `ece3162_core`: 6-D double-integrator
+Kinodynamic A*, clamped B-splines with analytical derivatives, an ESDF-free
+EGO-inspired control-point optimizer, feed-forward PD tracking, and bounded
+double-integrator dynamics. Run the hardware-inert system with:
+
+```bash
+docker compose build
+docker run --rm ece3162-ece3162 bash -lc \
+  'source /opt/ros/jazzy/setup.bash && source /workspace/install/setup.bash && \
+   ros2 launch ece3162_bringup autonomy_sim.launch.py scenario:=static'
+```
+
+Scenarios are `free`, `static`, `constrained`, `dynamic`, and `failure`.
+Commands remain simulated acceleration references; this launch has no serial
+or MSP command publisher.
+
 ## ROS 2 Jazzy quick start
 
 On macOS, open the repository in VS Code and choose **Dev Containers: Reopen in
