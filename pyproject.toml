@@ -5,18 +5,29 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ece3162-drone-motion-planning"
 version = "0.1.0"
-description = "Hand-guided autonomous F450 motion-planning research platform"
+description = "Unified autonomous Duckiedrone planning, perception, control, and simulation"
 requires-python = ">=3.11"
 dependencies = [
     "numpy==1.26.4",
     "scipy==1.16.2",
     "PyYAML==6.0.3",
     "matplotlib==3.10.6",
+    "opencv-contrib-python==4.11.0.86",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2"]
+mujoco = ["mujoco==3.3.7"]
+hand = ["mediapipe==0.10.21; platform_machine != 'aarch64'"]
+all = [
     "pytest==8.4.2",
     "mujoco==3.3.7",
-    "opencv-contrib-python==4.11.0.86",
     "mediapipe==0.10.21; platform_machine != 'aarch64'",
 ]
+
+[project.scripts]
+ece3162-sim = "ece3162.cli:simulation_main"
+ece3162-benchmark = "ece3162.cli:benchmark_main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -24,14 +35,7 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = [
-    "common*",
-    "hand_tracking*",
-    "mapping*",
-    "planning*",
-    "simulation*",
-    "trajectory*",
-    "utils*",
-    "visualization*",
+    "ece3162*",
 ]
 namespaces = false
 

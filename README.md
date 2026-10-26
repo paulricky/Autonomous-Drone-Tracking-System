@@ -1,12 +1,68 @@
-# ECE 3162: Hand-Tracking F450 Quadcopter with Stereo-Vision Motion Planning and Autonomous CAS
+# ECE 3162: Quadcopter Motion Planning and Duckiedrone Integration
+
+## Recovered Duckiedrone simulation
+
+The repository now includes a hardware-disabled, ROS-independent integration
+for the recovered Duckietown Duckiedrone. It reuses the existing 3-D A*, map
+inflation, collision checking, and shortcut smoothing, then closes the loop
+through a waypoint state machine and bounded point-mass tracking model.
+
+```bash
+python -m pytest -q
+MPLBACKEND=Agg python scripts/run_duckiedrone_sim.py --scenario baseline
+MPLBACKEND=Agg python scripts/run_duckiedrone_sim.py --scenario obstacle
+```
+
+Results and figures are written below `benchmark_results/duckiedrone/` (ignored
+generated output). Configuration is in `config/duckiedrone_simulation.yaml`.
+Hardware publication defaults to false; no test imports ROS, opens serial
+devices, arms, or commands motors.
+
+## Unified package and advanced navigation
+
+All active Python code is installed beneath the single `ece3162` package.
+The recovered ROS package is a read-only provenance snapshot at
+`archive/duckiedrone_pidrone_pkg/`, not a second runtime application. Tested
+native replacements include MSP v1 packet framing and a deterministic PID;
+the original flight node and failsafe remain reference material until hardware
+behavior can be verified.
+
+```bash
+python -m pip install -e '.[all]'
+python -m pytest -q
+ece3162-sim --scenario basic
+ece3162-sim --scenario static
+ece3162-sim --scenario dynamic
+```
+
+The advanced path is a real acceleration-primitive Kinodynamic A* followed by
+an ESDF-free, EGO-Planner-inspired B-spline optimizer and feed-forward PD
+tracking of a delayed/noisy estimated state. The optimizer implements EGO's
+broad control-point cost structure but is not a port of, or equivalent to, the
+reference C++ rebound optimizer.
+
+Stereo modules provide bounded OpenCV/recorded acquisition, timestamp pairing,
+calibration persistence and chessboard calibration, rectification,
+StereoSGBM, metric depth, point clouds, and voxel ray integration. No physical
+OV9281 calibration, synchronization, rate, or accuracy result is claimed.
+
+See [architecture](docs/DUCKIEDRONE_ARCHITECTURE.md),
+[audit](docs/INTEGRATION_AUDIT.md), [simulation guide](docs/SIMULATION.md), and
+[advanced navigation](docs/ADVANCED_NAVIGATION.md), [stereo guide](docs/STEREO_PERCEPTION.md),
+and [hardware checklist](docs/HARDWARE_READINESS.md). Software simulation does not
+establish safe physical flight.
+
+Executed numerical results and limitations are recorded in
+[BENCHMARKS.md](docs/BENCHMARKS.md). Generated JSON and PNG artifacts are in
+`results/advanced_navigation/`.
 
 ## Project Overview
 
-This platform lets a person choose a 3-D goal with hand motion while a
-planner decides how an F450-style quadcopter can reach it safely. MediaPipe is
-the human interface, stereo is the environment sensor, MuJoCo is the primary
-interactive simulator, and PX4 will later retain low-level flight control. The
-hand never commands motors, rotor speed, thrust, or attitude directly.
+This unified platform plans and simulates autonomous 3-D navigation for the
+recovered Duckietown Duckiedrone while preserving earlier hand-guided F450 and
+MuJoCo experiments as optional inputs/simulators. Stereo is the intended
+environment sensor. The verified future low-level boundary is the recovered
+SP Racing F3/MSP stack—not PX4—and physical output remains blocked.
 
 ## Motion-Planning Objective
 
@@ -28,13 +84,13 @@ flowchart LR
   P --> Q[Collision-free path]
   Q --> SM[Validated smoothing]
   SM --> T[Limited trajectory]
-  T --> MJ[MuJoCo F450]
-  MJ --> HV[Hardware Validation]
+  T --> MJ[Double-integrator / MuJoCo simulation]
+  MJ --> HV[Future Duckiedrone bench validation]
 ```
 
 Frames are explicit. OpenCV camera is +x right, +y down, +z forward; body FLU
-is +x forward, +y left, +z up; planning uses local ENU; the future PX4 boundary
-converts explicitly to NED.
+is +x forward, +y left, +z up; planning uses local ENU. The recovered
+Duckiedrone controller-frame conversion remains unverified and blocked.
 
 ## Repository Structure
 
@@ -43,13 +99,18 @@ config/             YAML settings
 scripts/            executable tools and simulations
 simulation/models/  MuJoCo F450 MJCF
 simulation/worlds/  planner YAML and MuJoCo worlds
-src/common/         frame-aware shared messages
-src/mapping/        voxel maps, transforms, inflation
-src/planning/       A*, collision checking, smoothing
-src/trajectory/     time parameterization
-src/hand_tracking/  MediaPipe tracking and goal generation
-src/stereo/         stereo perception pipeline
+src/ece3162/common/        frame-aware shared messages
+src/ece3162/planning/      geometric and kinodynamic planning
+src/ece3162/trajectory/    time parameterization and B-splines
+src/ece3162/control/       waypoint/PID/trajectory feedback control
+src/ece3162/perception/    stereo acquisition, calibration, and depth
+src/ece3162/localization/  state health and estimator interfaces
+src/ece3162/mapping/       voxel maps, inflation, and ray updates
+src/ece3162/simulation/    closed-loop and MuJoCo runners
+src/ece3162/hardware/      inert MSP framing and guarded adapters
+archive/                   recovered provenance snapshots
 tests/              hardware-free tests
+results/            generated metrics and figures
 ```
 
 ## Installation
@@ -233,5 +294,4 @@ goal mapping are implemented and unit-tested; real webcam calibration/tracking
 still requires an interactive validation session. Stereo and dynamic replanning
 are not implemented. Later components are marked complete only after their
 executable milestones pass.
-
 

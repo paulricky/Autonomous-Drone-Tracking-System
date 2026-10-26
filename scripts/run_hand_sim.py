@@ -14,19 +14,19 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from common.types import Path as MotionPath
-from hand_tracking.calibration import HandCalibration, HandCalibrationError, default_calibration
-from hand_tracking.display import OpenCVDisplayProcess
-from hand_tracking.goal_mapper import GoalMapper, TrackingMode
-from hand_tracking.tracker import HandState, LatestFrameCamera, MediaPipeHandTracker
-from mapping.obstacle_inflation import inflate_obstacles
-from mapping.world_loader import load_world
-from planning.astar import AStarPlanner
-from planning.collision_checker import CollisionChecker
-from planning.path_utils import shortcut_path
-from simulation.mujoco_runner import MujocoKinematicRunner
-from trajectory.time_parameterization import TrajectoryGenerator
-from utils.config import load_yaml
+from ece3162.common.types import Path as MotionPath
+from ece3162.hand_tracking.calibration import HandCalibration, HandCalibrationError, default_calibration
+from ece3162.hand_tracking.display import OpenCVDisplayProcess
+from ece3162.hand_tracking.goal_mapper import GoalMapper, TrackingMode
+from ece3162.hand_tracking.tracker import HandState, LatestFrameCamera, MediaPipeHandTracker
+from ece3162.mapping.obstacle_inflation import inflate_obstacles
+from ece3162.mapping.world_loader import load_world
+from ece3162.planning.astar import AStarPlanner
+from ece3162.planning.collision_checker import CollisionChecker
+from ece3162.planning.path_utils import shortcut_path
+from ece3162.simulation.mujoco_runner import MujocoKinematicRunner
+from ece3162.trajectory.time_parameterization import TrajectoryGenerator
+from ece3162.utils.config import load_yaml
 
 
 def args() -> argparse.Namespace:

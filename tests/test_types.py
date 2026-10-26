@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from common.types import CoordinateFrame, DroneState, Path
+from ece3162.common.types import CoordinateFrame, DroneState, Path
 
 
 def test_path_length() -> None:

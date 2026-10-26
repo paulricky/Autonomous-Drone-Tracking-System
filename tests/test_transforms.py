@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from mapping.transforms import camera_to_body_flu, enu_to_ned
+from ece3162.mapping.transforms import camera_to_body_flu, enu_to_ned
 
 
 def test_camera_axes_to_body_flu() -> None:

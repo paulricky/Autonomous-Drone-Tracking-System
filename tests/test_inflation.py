@@ -1,6 +1,6 @@
 import numpy as np
-from mapping.obstacle_inflation import inflate_obstacles
-from mapping.voxel_map import Occupancy, VoxelMap
+from ece3162.mapping.obstacle_inflation import inflate_obstacles
+from ece3162.mapping.voxel_map import Occupancy, VoxelMap
 
 
 def test_inflation_preserves_raw_map_and_expands_obstacle() -> None:

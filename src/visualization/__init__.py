@@ -1,2 +1,0 @@
-"""Disableable debug visualization."""
-

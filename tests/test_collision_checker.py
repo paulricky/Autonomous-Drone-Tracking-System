@@ -1,7 +1,7 @@
 import numpy as np
-from common.types import Path
-from mapping.voxel_map import Occupancy, VoxelMap
-from planning.collision_checker import CollisionChecker
+from ece3162.common.types import Path
+from ece3162.mapping.voxel_map import Occupancy, VoxelMap
+from ece3162.planning.collision_checker import CollisionChecker
 
 
 def obstacle_map() -> VoxelMap:

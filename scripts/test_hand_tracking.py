@@ -8,10 +8,10 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from hand_tracking.calibration import HandCalibration, HandCalibrationError
-from hand_tracking.goal_mapper import GoalMapper
-from hand_tracking.tracker import LatestFrameCamera, MediaPipeHandTracker
-from utils.config import load_yaml
+from ece3162.hand_tracking.calibration import HandCalibration, HandCalibrationError
+from ece3162.hand_tracking.goal_mapper import GoalMapper
+from ece3162.hand_tracking.tracker import LatestFrameCamera, MediaPipeHandTracker
+from ece3162.utils.config import load_yaml
 
 
 def main() -> int:

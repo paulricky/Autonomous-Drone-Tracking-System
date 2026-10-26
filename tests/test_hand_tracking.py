@@ -3,13 +3,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hand_tracking.calibration import (HandCalibration, HandCalibrationError,
+from ece3162.hand_tracking.calibration import (HandCalibration, HandCalibrationError,
                                        default_calibration)
-from hand_tracking.display import normalize_display_frame
-from hand_tracking.goal_mapper import GoalMapper, TrackingMode
-from hand_tracking.gestures import HandDirection
-from hand_tracking.smoothing import ExponentialSmoother
-from hand_tracking.tracker import HandState
+from ece3162.hand_tracking.display import normalize_display_frame
+from ece3162.hand_tracking.goal_mapper import GoalMapper, TrackingMode
+from ece3162.hand_tracking.gestures import HandDirection
+from ece3162.hand_tracking.smoothing import ExponentialSmoother
+from ece3162.hand_tracking.tracker import HandState
 
 
 def config() -> dict:

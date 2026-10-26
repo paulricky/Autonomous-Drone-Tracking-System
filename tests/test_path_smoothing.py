@@ -1,9 +1,9 @@
 from pathlib import Path
-from mapping.obstacle_inflation import inflate_obstacles
-from mapping.world_loader import load_world
-from planning.astar import AStarPlanner
-from planning.collision_checker import CollisionChecker
-from planning.path_utils import shortcut_path
+from ece3162.mapping.obstacle_inflation import inflate_obstacles
+from ece3162.mapping.world_loader import load_world
+from ece3162.planning.astar import AStarPlanner
+from ece3162.planning.collision_checker import CollisionChecker
+from ece3162.planning.path_utils import shortcut_path
 
 
 ROOT = Path(__file__).resolve().parents[1]

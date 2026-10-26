@@ -9,13 +9,13 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 import numpy as np
-from mapping.obstacle_inflation import inflate_obstacles
-from mapping.world_loader import load_world
-from planning.astar import AStarPlanner
-from planning.collision_checker import CollisionChecker
-from planning.path_utils import shortcut_path
-from utils.config import load_yaml
-from visualization.planning_view import show_planning_result
+from ece3162.mapping.obstacle_inflation import inflate_obstacles
+from ece3162.mapping.world_loader import load_world
+from ece3162.planning.astar import AStarPlanner
+from ece3162.planning.collision_checker import CollisionChecker
+from ece3162.planning.path_utils import shortcut_path
+from ece3162.utils.config import load_yaml
+from ece3162.visualization.planning_view import show_planning_result
 
 
 def parse_args() -> argparse.Namespace:
