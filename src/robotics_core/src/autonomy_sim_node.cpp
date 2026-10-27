@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <exception>
 #include <memory>
 #include <mutex>
@@ -52,12 +53,7 @@ class SimulatorNode final : public rclcpp::Node {
     RCLCPP_INFO(get_logger(), "simulated drone initialized; hardware output absent");
     command_ = create_subscription<flight_interfaces::msg::ControlCommand>(
         "control/acceleration", rclcpp::QoS(1).best_effort(),
-        [this](flight_interfaces::msg::ControlCommand::SharedPtr m) {
-          std::lock_guard<std::mutex> l(mu_);
-          acceleration_ = vec(m->acceleration);
-          braking_ = m->braking;
-          last_command_ = now();
-        });
+        [this](flight_interfaces::msg::ControlCommand::SharedPtr m) { accept_command(*m); });
     truth_ = create_publisher<flight_interfaces::msg::VehicleState>("state/ground_truth", 10);
     estimate_ = create_publisher<flight_interfaces::msg::VehicleState>("state/estimate",
                                                                        rclcpp::SensorDataQoS());
@@ -65,6 +61,26 @@ class SimulatorNode final : public rclcpp::Node {
   }
 
  private:
+  void accept_command(const flight_interfaces::msg::ControlCommand& m) {
+    const auto stamp = rclcpp::Time(m.header.stamp);
+    const auto age = (now() - stamp).seconds();
+    const auto acceleration = vec(m.acceleration);
+    if (m.header.frame_id != "map" || stamp.nanoseconds() <= 0 || age < -.05 || age > .15 ||
+        !nav::finite(acceleration) || nav::norm(acceleration) > 2.0 + 1e-6 ||
+        (!m.braking && m.trajectory_id == 0)) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
+                           "rejected invalid or stale simulated control command");
+      return;
+    }
+    std::lock_guard<std::mutex> l(mu_);
+    if (stamp <= last_accepted_stamp_ || (!m.braking && m.trajectory_id < last_trajectory_id_))
+      return;
+    acceleration_ = acceleration;
+    braking_ = m.braking;
+    last_command_ = now();
+    last_accepted_stamp_ = stamp;
+    last_trajectory_id_ = std::max(last_trajectory_id_, m.trajectory_id);
+  }
   void tick() {
     nav::Vec3 a{};
     {
@@ -99,6 +115,8 @@ class SimulatorNode final : public rclcpp::Node {
   bool braking_{};
   std::mutex mu_;
   rclcpp::Time last_command_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_accepted_stamp_{0, 0, RCL_ROS_TIME};
+  std::uint64_t last_trajectory_id_{};
   rclcpp::Subscription<flight_interfaces::msg::ControlCommand>::SharedPtr command_;
   rclcpp::Publisher<flight_interfaces::msg::VehicleState>::SharedPtr truth_, estimate_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -678,6 +696,8 @@ class AutonomyNode final : public rclcpp::Node {
   void brake() {
     flight_interfaces::msg::ControlCommand m;
     m.header.stamp = now();
+    m.header.frame_id = "map";
+    m.trajectory_id = trajectory_id_;
     m.braking = true;
     nav::Vec3 a{};
     {

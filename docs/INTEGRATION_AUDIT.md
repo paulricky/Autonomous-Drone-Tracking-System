@@ -21,10 +21,11 @@
 
 ## Consolidation decisions
 
-- **Implemented and verified:** `robotics_tools` namespace, geometric A*, Kinodynamic
+- **Implemented and verified:** the native ROS 2 packages provide kinodynamic
   A*, B-splines, EGO-inspired optimization, double-integrator dynamics,
-  waypoint/time-indexed tracking, map inflation/collision checks, stereo data
-  primitives, ray mapping, localization health, MSP framing, and PID primitive.
+  trajectory tracking, live voxel mapping, stereo depth, visual odometry,
+  state estimation, and MSP framing. `robotics_tools` retains offline geometric
+  A* and simulation fixtures.
 - **Reusable:** recovered MSP framing/channel constants and controller/fault
   semantics informed the native adapters and safety documentation.
 - **Replaced:** ROS-coupled PID math and synthetic UKF sensor simulation are not

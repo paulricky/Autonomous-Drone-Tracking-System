@@ -143,11 +143,11 @@ def run(scenario, root):
                   cpu_seconds=usage.ru_utime+usage.ru_stime-usage_before.ru_utime-usage_before.ru_stime,
                   peak_child_rss_kib=usage.ru_maxrss, numerical=numerical, native_metrics=matched)
     if integrated:
-        expected = terminal == "succeeded" if scenario == "static" else bool(terminal)
+        expected = terminal == "succeeded" if scenario in ("static", "dynamic") else bool(terminal)
         if scenario in ("disconnect", "localization_loss"):
             expected = bool(terminal and terminal.startswith("failed:"))
         if scenario == "dynamic":
-            expected = expected and (len(trajectories) > 1 or log.count("mission_status=planning") > 1 and bool(terminal and terminal.startswith("failed:")))
+            expected = expected and len(trajectories) > 1
         connected = bool(images and maps and estimates) and not collisions and result["privileged_estimates"] == 0
         if scenario == "static":
             connected = connected and bool(trajectories and any(not c[3] for c in controls))

@@ -46,8 +46,8 @@ The native C++17 ROS 2 path is the active planning, trajectory, tracking,
 stereo, mapping, and estimation implementation. The redundant Python
 kinodynamic planner, optimizer, B-spline, tracker, dynamics, stereo-depth,
 estimator, and MSP modules were removed. Offline Python geometric planning,
-voxel mapping, and waypoint/MuJoCo runners remain outside that path and still
-need migration or retirement. ROS 1 flight/fault/state-estimation source remains
+voxel mapping, and waypoint/MuJoCo runners remain outside that path as offline
+simulation and visualization tools. ROS 1 flight/fault/state-estimation source remains
 archive-only because its controller conventions and failure behavior require
 hardware review. Physical camera calibration, Pi 5 runtime performance, and
 verified MSP flight-controller behavior remain unmeasured.
@@ -137,7 +137,7 @@ and focused Python tooling tests passed (13 tests). Software-only static and
 dynamic stereo navigation succeeded with one and two trajectories respectively;
 the disconnect scenario stopped with braking and an explicit localization/map
 failure. These results do not establish physical flight readiness or complete
-the remaining offline Python migration.
+physical camera or flight-controller integration.
 
 The earlier compiler error was a `cv::MatCommaInitializer_` passed directly to
 `warpAffine`; materializing a `cv::Mat` fixed it. The VehicleState discovery

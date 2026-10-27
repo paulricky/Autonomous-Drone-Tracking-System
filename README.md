@@ -12,9 +12,9 @@ rectification/SGBM/depth, metric clouds, voxel ray integration, stereo PnP
 odometry and state estimation to the existing native navigation stack.
 The mission manager waits for localization/map readiness before sending an action.
 The software-only ROS path has a native planner, optimizer, trajectory sampler,
-tracker, perception, mapping, and state estimator. The separate offline Python
-geometric planner, voxel-map utilities, and waypoint/MuJoCo runners still need
-native replacement or retirement before the migration is complete.
+tracker, perception, mapping, and state estimator. The separate Python
+geometric planner, voxel arrays, and waypoint/MuJoCo runners support offline
+simulation and visualization; ROS navigation nodes do not import them.
 
 ```bash
 # Inside the existing Jazzy container, with this repository mounted at /workspace:
@@ -91,7 +91,7 @@ devices, arms, or commands motors.
 All active Python code is installed beneath the single `robotics_tools` package.
 The recovered ROS package is a read-only provenance snapshot at
 `archive/duckiedrone_pidrone_pkg/`, not a second runtime application. Tested
-native replacements include MSP v1 packet framing and a deterministic PID;
+native replacements include MSP v1 packet framing and feedback/feedforward tracking;
 the original flight node and failsafe remain reference material until hardware
 behavior can be verified.
 
@@ -168,14 +168,14 @@ scripts/            executable tools and simulations
 simulation/models/  MuJoCo F450 MJCF
 simulation/worlds/  planner YAML and MuJoCo worlds
 src/robotics_tools/robotics_tools/common/        frame-aware shared messages
-src/robotics_tools/robotics_tools/planning/      geometric and kinodynamic planning
-src/robotics_tools/robotics_tools/trajectory/    time parameterization and B-splines
-src/robotics_tools/robotics_tools/control/       waypoint/PID/trajectory feedback control
-src/robotics_tools/robotics_tools/perception/    stereo acquisition, calibration, and depth
-src/robotics_tools/robotics_tools/localization/  state health and estimator interfaces
-src/robotics_tools/robotics_tools/mapping/       voxel maps, inflation, and ray updates
-src/robotics_tools/robotics_tools/simulation/    closed-loop and MuJoCo runners
-src/robotics_tools/robotics_tools/hardware/      inert MSP framing and guarded adapters
+src/robotics_core/            native planning, mapping, trajectories, tracking, and simulation
+src/stereo_perception/        native stereo, visual odometry, and estimation
+src/flight_mission/           Python mission orchestration
+src/robotics_tools/robotics_tools/planning/      offline geometric A* tooling
+src/robotics_tools/robotics_tools/trajectory/    offline stop-at-waypoint profiles
+src/robotics_tools/robotics_tools/perception/    camera and calibration tooling
+src/robotics_tools/robotics_tools/mapping/       offline world fixtures and inflation
+src/robotics_tools/robotics_tools/simulation/    offline waypoint and MuJoCo runners
 archive/                   recovered provenance snapshots
 tests/              hardware-free tests
 results/            generated metrics and figures

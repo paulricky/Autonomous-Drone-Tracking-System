@@ -22,7 +22,7 @@ trajectory tracker, double-integrator, stereo-depth estimator, state estimator,
 and MSP encoder have been removed after native replacements were connected.
 The offline geometric A*, voxel map, waypoint simulation, and MuJoCo tools still
 contain Python computation. They are outside the ROS 2 navigation launch and
-remain migration work before the native port can be called complete.
+are retained for deterministic simulation, visualization, and reference tests.
 
 ## Frames and units
 
