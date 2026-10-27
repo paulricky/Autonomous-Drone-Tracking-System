@@ -3,10 +3,10 @@
 The deployed path is C++17. Python perception/mapping/localization modules remain
 reference code; the ROS perception navigation launch does not import them.
 
-`ece3162_perception` provides ROS-independent acquisition, synchronization,
+`stereo_perception` provides ROS-independent acquisition, synchronization,
 calibration, rectification, SGBM, Q-matrix depth reconstruction, back-projection,
 stereo visual odometry, state estimation, and fixed-world synthetic rendering.
-The existing `ece3162_core::VoxelMap` performs batch free-ray/occupied-endpoint
+The existing `robotics_core::VoxelMap` performs batch free-ray/occupied-endpoint
 integration, unknown-space queries, and inflation. Endpoints win over free rays
 within an observation; only observed rays clear previous occupancy. Unseen cells
 are not automatically cleared. The planner and optimizer read this same map.
@@ -16,13 +16,13 @@ are not automatically cleared. The planner and optimizer read this same map.
 After sourcing `/opt/ros/jazzy/setup.bash` **and** `install/setup.bash`:
 
 ```bash
-ros2 launch ece3162_bringup synthetic_perception.launch.py
-ros2 launch ece3162_bringup stereo_localization.launch.py
-ros2 launch ece3162_bringup perception_navigation.launch.py
-ros2 launch ece3162_bringup perception_navigation.launch.py dynamic_after_s:=3.0
-ros2 launch ece3162_bringup perception_navigation.launch.py disconnect_after_frames:=30
-ros2 launch ece3162_bringup perception_navigation.launch.py low_texture_after_frames:=30
-ros2 launch ece3162_bringup uvc_stereo.launch.py left_device:=/dev/v4l/by-id/LEFT right_device:=/dev/v4l/by-id/RIGHT calibration_file:=/path/stereo.yaml
+ros2 launch robotics_bringup synthetic_perception.launch.py
+ros2 launch robotics_bringup stereo_localization.launch.py
+ros2 launch robotics_bringup perception_navigation.launch.py
+ros2 launch robotics_bringup perception_navigation.launch.py dynamic_after_s:=3.0
+ros2 launch robotics_bringup perception_navigation.launch.py disconnect_after_frames:=30
+ros2 launch robotics_bringup perception_navigation.launch.py low_texture_after_frames:=30
+ros2 launch robotics_bringup uvc_stereo.launch.py left_device:=/dev/v4l/by-id/LEFT right_device:=/dev/v4l/by-id/RIGHT calibration_file:=/path/stereo.yaml
 ```
 
 Standalone perception/localization nodes run until stopped. Mission launches
@@ -41,7 +41,7 @@ they are **not verified exposure times**. Drop counts are receipt-gap estimates,
 not verified driver sequence counters. Physical disconnect/blocking behavior still
 needs camera tests. Global shutter does not establish stereo synchronization.
 
-Recorded mode is `ros2 run ece3162_perception perception_node --ros-args -p mode:=recorded
+Recorded mode is `ros2 run stereo_perception perception_node --ros-args -p mode:=recorded
 -p calibration_file:=/path/stereo.yaml -p recorded_manifest:=/path/pairs.txt`.
 Each manifest row is `capture_seconds left_image_path right_image_path`, ordered
 strictly by timestamp. Paths may be relative to the manifest. Replay preserves
@@ -49,7 +49,7 @@ capture intervals and translates the sequence epoch into ROS time.
 
 ## Calibration and geometry
 
-`ros2 run ece3162_perception calibrate_stereo 'left/*.png' 'right/*.png' 7 5 0.04 stereo.yaml`
+`ros2 run stereo_perception calibrate_stereo 'left/*.png' 'right/*.png' 7 5 0.04 stereo.yaml`
 uses sorted paired images, checkerboard internal-corner counts and measured square
 size in metres. The CLI requires eight usable pairs and RMS <= 1 pixel. Capture
 diverse positions, distances and tilts; a low reprojection error alone does not
@@ -109,8 +109,8 @@ state. `mission/cancel` (std_msgs/Empty) requests action cancellation.
 Targeted native tests cover depth, matrix validation, stereo motion/rotation,
 state freshness/loss and batch mapping semantics. A static ROS mission using
 perception occupancy and PnP estimates has succeeded; sensor-loss smoke tests
-have produced explicit failures. Existing `scripts/validate_phase4_ros.py` and
-native `perception_benchmark` retain hooks for Phase 5. Comprehensive parity,
+have produced explicit failures. `scripts/validate_phase4_ros.py` retains a
+software observation hook for Phase 5. Comprehensive parity,
 calibration coverage, recorded datasets, drift, mapping accuracy, overload,
 long-duration stability, Pi 5 performance and physical OV9281 operation remain
 validation work. No real camera or Raspberry Pi measurements are claimed.

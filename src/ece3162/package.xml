@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<package format="3"><name>ece3162_algorithms</name><version>0.2.0</version>
-<description>Validated Python navigation, perception, mapping, and simulation algorithms.</description>
-<maintainer email="maintainer@example.com">ECE3162 maintainers</maintainer><license>MIT</license>
-<buildtool_depend>ament_python</buildtool_depend><exec_depend>python3-numpy</exec_depend>
-<exec_depend>python3-scipy</exec_depend><exec_depend>python3-yaml</exec_depend>
-<test_depend>python3-pytest</test_depend><export><build_type>ament_python</build_type></export></package>

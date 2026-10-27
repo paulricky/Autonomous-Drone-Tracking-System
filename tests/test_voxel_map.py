@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from ece3162.mapping.voxel_map import Occupancy, VoxelMap
+from robotics_tools.mapping.voxel_map import Occupancy, VoxelMap
 
 
 def test_index_world_round_trip() -> None:

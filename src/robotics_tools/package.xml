@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<package format="3"><name>robotics_tools</name><version>0.2.0</version>
+<description>Python hand-goal, offline geometry, visualization, and simulation tools.</description>
+<maintainer email="maintainer@example.com">Autonomous Drone Navigation maintainers</maintainer><license>MIT</license>
+<exec_depend>python3-numpy</exec_depend>
+<exec_depend>python3-yaml</exec_depend>
+<test_depend>python3-pytest</test_depend><export><build_type>ament_python</build_type></export></package>

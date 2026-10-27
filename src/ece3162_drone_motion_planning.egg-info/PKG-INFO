@@ -1,9 +1,0 @@
-Metadata-Version: 2.1
-Name: ece3162-drone-motion-planning
-Version: 0.1.0
-Summary: Unified autonomous Duckiedrone planning, perception, control, and simulation
-Requires-Python: >=3.11
-Provides-Extra: dev
-Provides-Extra: mujoco
-Provides-Extra: hand
-Provides-Extra: all

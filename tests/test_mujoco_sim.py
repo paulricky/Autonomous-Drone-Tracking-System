@@ -2,9 +2,9 @@ from pathlib import Path
 import numpy as np
 import mujoco
 
-from ece3162.common.types import Path as MotionPath
-from ece3162.simulation.mujoco_runner import MujocoKinematicRunner
-from ece3162.trajectory.time_parameterization import TrajectoryGenerator
+from robotics_tools.common.types import Path as MotionPath
+from robotics_tools.simulation.mujoco_runner import MujocoKinematicRunner
+from robotics_tools.trajectory.time_parameterization import TrajectoryGenerator
 
 
 ROOT = Path(__file__).resolve().parents[1]

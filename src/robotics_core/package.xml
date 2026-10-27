@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>robotics_core</name><version>0.2.0</version>
+  <description>ROS-independent MSP, trajectory tracking, and safety core with ROS 2 adapters.</description>
+  <maintainer email="maintainer@example.com">Autonomous Drone Navigation maintainers</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend><depend>rclcpp_action</depend><depend>rclcpp_lifecycle</depend><depend>diagnostic_msgs</depend>
+  <depend>flight_interfaces</depend><depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2_ros</depend>
+  <test_depend>ament_cmake_gtest</test_depend><test_depend>ament_lint_auto</test_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

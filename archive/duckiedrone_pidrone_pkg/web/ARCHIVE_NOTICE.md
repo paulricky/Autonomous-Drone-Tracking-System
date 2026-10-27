@@ -7,7 +7,7 @@ copies of Three.js, Bootstrap, Chart.js, jQuery, ROSLIB/ROS3D,
 EventEmitter2, MJPEG canvas and loaders, plus the obsolete first-party
 `main.js` dashboard entry point.
 
-No active ECE3162 source, launch file, or test referenced the dashboard. Its
+No active Autonomous Drone Navigation source, launch file, or test referenced the dashboard. Its
 runtime depended on ROS 1 rosbridge and the recovered MJPEG server. ROS 2
 replacements are RViz2, `diagnostic_msgs`, `ros2` command-line tools, and
 rosbag2. The unmodified recovered microSD image remains the authoritative copy

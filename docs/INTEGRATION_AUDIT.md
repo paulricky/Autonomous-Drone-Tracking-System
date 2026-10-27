@@ -21,7 +21,7 @@
 
 ## Consolidation decisions
 
-- **Implemented and verified:** `ece3162` namespace, geometric A*, Kinodynamic
+- **Implemented and verified:** `robotics_tools` namespace, geometric A*, Kinodynamic
   A*, B-splines, EGO-inspired optimization, double-integrator dynamics,
   waypoint/time-indexed tracking, map inflation/collision checks, stereo data
   primitives, ray mapping, localization health, MSP framing, and PID primitive.

@@ -8,10 +8,10 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from ece3162.hand_tracking.calibration import HandCalibration, HandCalibrationError
-from ece3162.hand_tracking.goal_mapper import GoalMapper
-from ece3162.hand_tracking.tracker import LatestFrameCamera, MediaPipeHandTracker
-from ece3162.utils.config import load_yaml
+from robotics_tools.hand_tracking.calibration import HandCalibration, HandCalibrationError
+from robotics_tools.hand_tracking.goal_mapper import GoalMapper
+from robotics_tools.hand_tracking.tracker import LatestFrameCamera, MediaPipeHandTracker
+from robotics_tools.utils.config import load_yaml
 
 
 def main() -> int:
@@ -39,7 +39,7 @@ def main() -> int:
                                    update.goal.position, calibrated=True)
             cv2.putText(overlay, f"STATE: {update.mode.value}  latency={state.latency_ms:.1f} ms",
                         (15, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 180, 0), 2)
-            cv2.imshow("ECE3162 Hand Goal Interface", overlay)
+            cv2.imshow("Autonomous Drone Navigation Hand Goal Interface", overlay)
             if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                 break
         return 0

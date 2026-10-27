@@ -1,7 +1,10 @@
 # Duckiedrone integration architecture
 
 This integration preserves `archive/duckiedrone_pidrone_pkg/` as recovered reference code.
-All active Python 3.11 code is under `src/ece3162/` and has no mandatory ROS or serial dependency.
+Python offline tools remain under `src/robotics_tools/`. The ROS 2 simulation
+uses the native C++ planner, optimizer, spline, tracker, perception, and
+mapping components. The diagram below describes the separate offline waypoint
+tool and its guarded legacy bridge.
 
 ```mermaid
 flowchart LR

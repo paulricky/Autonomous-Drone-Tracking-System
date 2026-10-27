@@ -4,8 +4,8 @@
 [INFO] [perception_node-2]: process started with pid [255]
 [uvc_stereo_node-1] [FATAL] [1793094991.921086511] [uvc_stereo]: calibration_file is required; supply measured stereo calibration
 [perception_node-2] [FATAL] [1793094991.948955737] [stereo_perception]: calibration_file is required; supply measured stereo calibration
-[ERROR] [uvc_stereo_node-1]: process has died [pid 254, exit code 2, cmd '/workspace/install/ece3162_perception/lib/ece3162_perception/uvc_stereo_node --ros-args --params-file /tmp/launch_params_timbm3kk'].
+[ERROR] [uvc_stereo_node-1]: process has died [pid 254, exit code 2, cmd '/workspace/install/stereo_perception/lib/stereo_perception/uvc_stereo_node --ros-args --params-file /tmp/launch_params_timbm3kk'].
 [INFO] [launch]: process[uvc_stereo_node-1] was required: shutting down launched system
 [INFO] [perception_node-2]: sending signal 'SIGINT' to process[perception_node-2]
-[ERROR] [perception_node-2]: process has died [pid 255, exit code -2, cmd '/workspace/install/ece3162_perception/lib/ece3162_perception/perception_node --ros-args --params-file /tmp/launch_params_zhpt_x6l'].
+[ERROR] [perception_node-2]: process has died [pid 255, exit code -2, cmd '/workspace/install/stereo_perception/lib/stereo_perception/perception_node --ros-args --params-file /tmp/launch_params_zhpt_x6l'].
 [INFO] [launch]: process[perception_node-2] was required: shutting down launched system

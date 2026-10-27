@@ -42,19 +42,15 @@ for provenance; the preserved microSD image is the authoritative full copy.
 
 ## Preserved and pending
 
-The tested Python planners, optimizer, B-spline, stereo, mapper, and simulator
-remain canonical until equivalent native libraries have numerical parity tests.
-They are not duplicated ROS applications. ROS 1 flight/fault/state estimation
-source remains archive-only because its controller conventions and failure
-behavior require hardware review. No camera, F3, Pi 5, ROS graph, colcon build,
-real perception benchmark, or physical flight was claimed in this migration.
-
-Priority remaining work is: run the dev container and colcon CI; add numerical
-parity fixtures before native planner/map/stereo replacement; bench-verify the
-F3 receive protocol and exact channel/mode semantics with motors disconnected;
-measure camera identities, modes, timestamps, calibration, and trigger support;
-then validate ARM64 resource use on a Pi 5. Physical flight requires a separate
-safety review.
+The native C++17 ROS 2 path is the active planning, trajectory, tracking,
+stereo, mapping, and estimation implementation. The redundant Python
+kinodynamic planner, optimizer, B-spline, tracker, dynamics, stereo-depth,
+estimator, and MSP modules were removed. Offline Python geometric planning,
+voxel mapping, and waypoint/MuJoCo runners remain outside that path and still
+need migration or retirement. ROS 1 flight/fault/state-estimation source remains
+archive-only because its controller conventions and failure behavior require
+hardware review. Physical camera calibration, Pi 5 runtime performance, and
+verified MSP flight-controller behavior remain unmeasured.
 
 ## Executed validation (2026-10-26, Intel macOS)
 
@@ -64,15 +60,15 @@ Commands actually executed:
 .venv/bin/python -m pytest -q
 # 57 passed in 12.70s (pre-migration baseline)
 
-g++ -std=c++17 -Wall -Wextra -Wpedantic -Isrc/ece3162_core/include \
-  -c src/ece3162_core/src/msp.cpp -o /tmp/ece3162-cpp-check/msp.o
-g++ -std=c++17 -Wall -Wextra -Wpedantic -Isrc/ece3162_core/include \
-  -c src/ece3162_core/src/trajectory_tracker.cpp \
-  -o /tmp/ece3162-cpp-check/trajectory_tracker.o
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Isrc/robotics_core/include \
+  -c src/robotics_core/src/msp.cpp -o /tmp/robotics_tools-cpp-check/msp.o
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Isrc/robotics_core/include \
+  -c src/robotics_core/src/trajectory_tracker.cpp \
+  -o /tmp/robotics_tools-cpp-check/trajectory_tracker.o
 # both compiled without diagnostics
 
-PYTHONPATH=src/ece3162_mission .venv/bin/python -m pytest -q \
-  src/ece3162_mission/test tests
+PYTHONPATH=src/flight_mission .venv/bin/python -m pytest -q \
+  src/flight_mission/test tests
 # 60 passed in 12.06s
 
 MPLBACKEND=Agg .venv/bin/python scripts/run_duckiedrone_sim.py --scenario baseline
@@ -90,12 +86,12 @@ the canonical non-ROS editable-install metadata.
 docker compose --progress plain build
 # Summary: 6 packages finished
 
-docker compose run --rm ece3162 bash -lc \
+docker compose run --rm robotics_stack bash -lc \
   'source /opt/ros/jazzy/setup.bash && source install/setup.bash && \
    colcon list --base-paths src && colcon test --base-paths src && \
    colcon test-result --verbose'
-# ece3162_algorithms, ece3162_bringup, ece3162_core,
-# ece3162_interfaces, ece3162_mission, ece3162_perception
+# robotics_tools, robotics_bringup, robotics_core,
+# flight_interfaces, flight_mission, stereo_perception
 # Summary: 17 tests, 0 errors, 0 failures, 0 skipped
 ```
 
@@ -115,8 +111,8 @@ unmeasured; no values are invented.
 # Phase 3 native planning update (2026-10-26)
 
 The simulation path now has native C++17 Kinodynamic A*, B-spline,
-EGO-inspired optimization, dynamics, and tracking components. Python remains
-as a numerical reference. The optimizer follows EGO-Planner's ESDF-free
+EGO-inspired optimization, dynamics, and tracking components. The optimizer
+follows EGO-Planner's ESDF-free
 control-point cost decomposition, but is an adaptation using occupied-voxel
 nearest-point penalties and backtracking gradient descent, not the upstream
 rebound optimizer or topology search.
@@ -130,9 +126,18 @@ Physical MSP output, arming, motors, and serial access remain excluded.
 Native stereo processing, geometry-based rendering, PnP RANSAC odometry and a
 timestamp/quality-checking state estimator are now connected to the existing
 voxel mapper and navigation pipeline. The mission manager submits the existing
-navigation action after map/state readiness. Python algorithm references remain
-available but are not selected by this runtime. C++ sources/headers in active
+navigation action after map/state readiness. Redundant Python implementations
+have since been removed. C++ sources/headers in active
 packages are formatted with the repository style; archives were not touched.
+
+The renamed Jazzy workspace has six packages. The rebuilt Dev Container
+completed rosdep resolution; its isolated Python environment imported ROS 2
+modules, NumPy 1.26.4, and SciPy 1.16.2. Focused native tests passed (27 tests),
+and focused Python tooling tests passed (13 tests). Software-only static and
+dynamic stereo navigation succeeded with one and two trajectories respectively;
+the disconnect scenario stopped with braking and an explicit localization/map
+failure. These results do not establish physical flight readiness or complete
+the remaining offline Python migration.
 
 The earlier compiler error was a `cv::MatCommaInitializer_` passed directly to
 `warpAffine`; materializing a `cv::Mat` fixed it. The VehicleState discovery

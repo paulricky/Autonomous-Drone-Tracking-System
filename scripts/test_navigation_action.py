@@ -4,7 +4,7 @@ import sys,time
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
-from ece3162_interfaces.action import NavigateToPose
+from flight_interfaces.action import NavigateToPose
 
 def wait(node,future,timeout):
     end=time.monotonic()+timeout

@@ -10,14 +10,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 import matplotlib.pyplot as plt
 import numpy as np
-from ece3162.integration.waypoint_manager import WaypointConfig, WaypointManager
-from ece3162.mapping.obstacle_inflation import inflate_obstacles
-from ece3162.mapping.world_loader import load_world
-from ece3162.planning.astar import AStarPlanner
-from ece3162.planning.collision_checker import CollisionChecker
-from ece3162.planning.path_utils import shortcut_path
-from ece3162.simulation.waypoint_closed_loop import ManualClock, PointMassConfig, run_closed_loop
-from ece3162.utils.config import load_yaml
+from robotics_tools.integration.waypoint_manager import WaypointConfig, WaypointManager
+from robotics_tools.mapping.obstacle_inflation import inflate_obstacles
+from robotics_tools.mapping.world_loader import load_world
+from robotics_tools.planning.astar import AStarPlanner
+from robotics_tools.planning.collision_checker import CollisionChecker
+from robotics_tools.planning.path_utils import shortcut_path
+from robotics_tools.simulation.waypoint_closed_loop import ManualClock, PointMassConfig, run_closed_loop
+from robotics_tools.utils.config import load_yaml
 
 
 def parse_args() -> argparse.Namespace:

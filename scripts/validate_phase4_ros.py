@@ -18,10 +18,10 @@ import time
 
 import numpy as np
 import rclpy
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, DurabilityPolicy, ReliabilityPolicy
 from std_msgs.msg import String
 from sensor_msgs.msg import Image, PointCloud2
-from ece3162_interfaces.msg import VehicleState, TimedTrajectory, ControlCommand
+from flight_interfaces.msg import VehicleState, TimedTrajectory, ControlCommand
 
 
 def distribution(values):
@@ -48,7 +48,7 @@ def run(scenario, root):
     launch = "perception_navigation" if integrated else {
         "synthetic": "synthetic_perception", "localization": "stereo_localization",
         "uvc_unconfigured": "uvc_stereo"}[scenario]
-    command = ["ros2", "launch", "ece3162_bringup", launch + ".launch.py"]
+    command = ["ros2", "launch", "robotics_bringup", launch + ".launch.py"]
     if integrated:
         command += [f"results_directory:={output}"]
     if scenario == "dynamic":
@@ -66,7 +66,9 @@ def run(scenario, root):
         node.create_subscription(ControlCommand, "control/acceleration", lambda m: controls.append((stamp(m), vector(m.acceleration), m.trajectory_id, m.braking)), qos_profile_sensor_data),
         node.create_subscription(Image, "stereo/left/image_raw", lambda m: images.append(stamp(m)), qos_profile_sensor_data),
         node.create_subscription(PointCloud2, "mapping/occupied_voxels", lambda m: maps.append((stamp(m), m.width*m.height)), qos_profile_sensor_data),
-        node.create_subscription(TimedTrajectory, "planning/trajectory", lambda m: trajectories.append(m), 10),
+        node.create_subscription(TimedTrajectory, "planning/trajectory", lambda m: trajectories.append(m),
+                                 QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                                            reliability=ReliabilityPolicy.RELIABLE)),
     ]
     usage_before = resource.getrusage(resource.RUSAGE_CHILDREN)
     begun = time.monotonic()
@@ -129,6 +131,7 @@ def run(scenario, root):
                   expected_observation_timeout=timed_out and not integrated,
                   mission_timeout=timed_out and integrated, wall_s=wall,
                   images=len(images), frame_hz=rate(images), map_updates=len(maps),
+                  control_messages=len(controls), braking_commands=sum(c[3] for c in controls),
                   map_hz=rate([x[0] for x in maps]), estimate_hz=rate([x[0] for x in estimates]),
                   privileged_estimates=sum(e[3] for e in estimates), trajectories=len(trajectories),
                   traveled_m=sum(distances), collision_samples=collisions,
@@ -145,7 +148,12 @@ def run(scenario, root):
             expected = bool(terminal and terminal.startswith("failed:"))
         if scenario == "dynamic":
             expected = expected and (len(trajectories) > 1 or log.count("mission_status=planning") > 1 and bool(terminal and terminal.startswith("failed:")))
-        result["passed"] = expected and not timed_out and bool(images and maps and estimates) and not collisions and result["privileged_estimates"] == 0
+        connected = bool(images and maps and estimates) and not collisions and result["privileged_estimates"] == 0
+        if scenario == "static":
+            connected = connected and bool(trajectories and any(not c[3] for c in controls))
+        if scenario in ("disconnect", "localization_loss") and trajectories:
+            connected = connected and bool(result["braking_commands"])
+        result["passed"] = expected and not timed_out and connected
     elif scenario == "uvc_unconfigured":
         result["passed"] = "cannot open calibration" in log or "calibration" in log and "FATAL" in log
     else:

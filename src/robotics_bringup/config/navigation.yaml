@@ -1,0 +1,13 @@
+autonomy_pipeline:
+  ros__parameters:
+    hardware_output_enabled: false
+    primitive_duration: 0.5
+    velocity_resolution: 0.5
+    max_velocity: 1.5
+    max_acceleration: 1.0
+    planning_timeout: 5.0
+    goal_position_tolerance: 0.35
+    goal_velocity_tolerance: 0.55
+    state_timeout: 0.25
+    trajectory_expiration_grace: 2.0
+    replan_position_error: 1.0

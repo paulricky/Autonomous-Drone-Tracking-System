@@ -1,4 +1,4 @@
-<mujoco model="ece3162_single_obstacle">
+<mujoco model="robotics_tools_single_obstacle">
   <compiler angle="radian"/>
   <option timestep="0.02" gravity="0 0 0"/>
   <visual><global azimuth="135" elevation="-25"/><quality shadowsize="2048"/></visual>

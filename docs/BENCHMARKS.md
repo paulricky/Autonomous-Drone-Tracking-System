@@ -1,7 +1,7 @@
 # Executed benchmarks
 
-Phase 4 now retains per-frame timing/accuracy CSV hooks in `results/perception/`
-and a native `perception_benchmark` executable. Those implementation smoke
+The native perception node retains per-frame timing/accuracy CSV hooks in
+`results/perception/`. Those implementation smoke
 observations are not a completed performance campaign. Comparative throughput,
 resource use, drift, map accuracy and Raspberry Pi 5 measurements are deferred
 to Phase 5; the Phase 3 figures below do not predict stereo performance.

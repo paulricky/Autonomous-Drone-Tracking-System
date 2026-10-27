@@ -1,4 +1,4 @@
-# ECE 3162: Quadcopter Motion Planning and Duckiedrone Integration
+# Autonomous Drone Navigation: Quadcopter Motion Planning and Duckiedrone Integration
 
 This repository is one ROS 2 Jazzy workspace for autonomous Duckiedrone
 navigation. Performance- and timing-sensitive code is migrating behind C++17
@@ -7,33 +7,37 @@ analysis, and the existing deterministic regression simulations. Physical
 hardware output, arming, takeoff, and motor commands are disabled and absent by
 default.
 
-Phase 4 now connects native C++ stereo acquisition/synchronization, OpenCV
+The native simulation launch connects C++ stereo acquisition/synchronization, OpenCV
 rectification/SGBM/depth, metric clouds, voxel ray integration, stereo PnP
 odometry and state estimation to the existing native navigation stack.
 The mission manager waits for localization/map readiness before sending an action.
+The software-only ROS path has a native planner, optimizer, trajectory sampler,
+tracker, perception, mapping, and state estimator. The separate offline Python
+geometric planner, voxel-map utilities, and waypoint/MuJoCo runners still need
+native replacement or retirement before the migration is complete.
 
 ```bash
 # Inside the existing Jazzy container, with this repository mounted at /workspace:
 source /opt/ros/jazzy/setup.bash
-colcon build --base-paths src --packages-up-to ece3162_bringup --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon build --base-paths src --packages-up-to robotics_bringup --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
-ros2 launch ece3162_bringup perception_navigation.launch.py
+ros2 launch robotics_bringup perception_navigation.launch.py
 ```
 
 See [native stereo implementation](docs/STEREO_PERCEPTION.md) for camera,
 recorded-input, frame, and launch details. Comprehensive validation and Pi 5
 performance characterization are reserved for Phase 5. Physical flight remains disabled.
 
-Phase 3 adds a reusable native stack in `ece3162_core`: 6-D double-integrator
+Phase 3 adds a reusable native stack in `robotics_core`: 6-D double-integrator
 Kinodynamic A*, clamped B-splines with analytical derivatives, an ESDF-free
 EGO-inspired control-point optimizer, feed-forward PD tracking, and bounded
 double-integrator dynamics. Run the hardware-inert system with:
 
 ```bash
 docker compose build
-docker run --rm ece3162-ece3162 bash -lc \
+docker compose run --rm robotics_stack bash -lc \
   'source /opt/ros/jazzy/setup.bash && source /workspace/install/setup.bash && \
-   ros2 launch ece3162_bringup autonomy_sim.launch.py scenario:=static'
+   ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=static'
 ```
 
 Scenarios are `free`, `static`, `constrained`, `dynamic`, and `failure`.
@@ -56,7 +60,7 @@ colcon build --base-paths src --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=
 source install/setup.bash
 colcon test --base-paths src
 colcon test-result --verbose
-ros2 launch ece3162_bringup diagnostics.launch.py
+ros2 launch robotics_bringup diagnostics.launch.py
 ```
 
 The launch is deliberately inert: it publishes status but does not activate,
@@ -84,7 +88,7 @@ devices, arms, or commands motors.
 
 ## Unified package and advanced navigation
 
-All active Python code is installed beneath the single `ece3162` package.
+All active Python code is installed beneath the single `robotics_tools` package.
 The recovered ROS package is a read-only provenance snapshot at
 `archive/duckiedrone_pidrone_pkg/`, not a second runtime application. Tested
 native replacements include MSP v1 packet framing and a deterministic PID;
@@ -92,11 +96,11 @@ the original flight node and failsafe remain reference material until hardware
 behavior can be verified.
 
 ```bash
-python -m pip install -e '.[all]'
-python -m pytest -q
-ece3162-sim --scenario basic
-ece3162-sim --scenario static
-ece3162-sim --scenario dynamic
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=free
+ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=static
+ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=dynamic
 ```
 
 The advanced path is a real acceleration-primitive Kinodynamic A* followed by
@@ -163,15 +167,15 @@ config/             YAML settings
 scripts/            executable tools and simulations
 simulation/models/  MuJoCo F450 MJCF
 simulation/worlds/  planner YAML and MuJoCo worlds
-src/ece3162/ece3162/common/        frame-aware shared messages
-src/ece3162/ece3162/planning/      geometric and kinodynamic planning
-src/ece3162/ece3162/trajectory/    time parameterization and B-splines
-src/ece3162/ece3162/control/       waypoint/PID/trajectory feedback control
-src/ece3162/ece3162/perception/    stereo acquisition, calibration, and depth
-src/ece3162/ece3162/localization/  state health and estimator interfaces
-src/ece3162/ece3162/mapping/       voxel maps, inflation, and ray updates
-src/ece3162/ece3162/simulation/    closed-loop and MuJoCo runners
-src/ece3162/ece3162/hardware/      inert MSP framing and guarded adapters
+src/robotics_tools/robotics_tools/common/        frame-aware shared messages
+src/robotics_tools/robotics_tools/planning/      geometric and kinodynamic planning
+src/robotics_tools/robotics_tools/trajectory/    time parameterization and B-splines
+src/robotics_tools/robotics_tools/control/       waypoint/PID/trajectory feedback control
+src/robotics_tools/robotics_tools/perception/    stereo acquisition, calibration, and depth
+src/robotics_tools/robotics_tools/localization/  state health and estimator interfaces
+src/robotics_tools/robotics_tools/mapping/       voxel maps, inflation, and ray updates
+src/robotics_tools/robotics_tools/simulation/    closed-loop and MuJoCo runners
+src/robotics_tools/robotics_tools/hardware/      inert MSP framing and guarded adapters
 archive/                   recovered provenance snapshots
 tests/              hardware-free tests
 results/            generated metrics and figures
@@ -183,7 +187,7 @@ Python 3.11+ is required.
 
 ```bash
 conda env create -f environment.yml
-conda activate ece3162-drone
+conda activate robotics-drone
 python scripts/setup_environment.py
 ```
 

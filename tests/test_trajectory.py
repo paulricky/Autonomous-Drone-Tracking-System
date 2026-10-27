@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from ece3162.common.types import Path
-from ece3162.trajectory.time_parameterization import TrajectoryGenerator
+from robotics_tools.common.types import Path
+from robotics_tools.trajectory.time_parameterization import TrajectoryGenerator
 
 
 def generator() -> TrajectoryGenerator:

@@ -1,8 +1,8 @@
 from pathlib import Path
-from ece3162.mapping.obstacle_inflation import inflate_obstacles
-from ece3162.mapping.world_loader import load_world
-from ece3162.planning.astar import AStarPlanner
-from ece3162.planning.collision_checker import CollisionChecker
+from robotics_tools.mapping.obstacle_inflation import inflate_obstacles
+from robotics_tools.mapping.world_loader import load_world
+from robotics_tools.planning.astar import AStarPlanner
+from robotics_tools.planning.collision_checker import CollisionChecker
 
 
 ROOT = Path(__file__).resolve().parents[1]

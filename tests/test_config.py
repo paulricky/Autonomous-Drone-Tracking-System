@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from ece3162.utils.config import ConfigError, load_yaml, require_keys
+from robotics_tools.utils.config import ConfigError, load_yaml, require_keys
 
 
 ROOT = Path(__file__).resolve().parents[1]

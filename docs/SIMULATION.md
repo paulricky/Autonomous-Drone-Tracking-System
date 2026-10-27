@@ -4,9 +4,9 @@ Install the existing project environment, then run:
 
 ```bash
 python -m pytest -q
-python -m ece3162.cli --scenario basic
-python -m ece3162.cli --scenario static
-python -m ece3162.cli --scenario dynamic
+ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=free
+ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=static
+ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=dynamic
 MPLBACKEND=Agg python scripts/run_duckiedrone_sim.py --scenario baseline
 MPLBACKEND=Agg python scripts/run_duckiedrone_sim.py --scenario obstacle
 ```
@@ -36,15 +36,15 @@ IAPF is unavailable because no IAPF/MATLAB implementation is present. The
 runner intentionally offers only the verified A* option.
 # Native closed-loop scenarios
 
-Run `ros2 launch ece3162_bringup autonomy_sim.launch.py scenario:=<name>` after
+Run `ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=<name>` after
 sourcing the Jazzy workspace. State evolves with the double-integrator
 equations and bounded acceleration/velocity; it is never assigned to a desired
 point. The tracker uses `state/estimate`, while truth is evaluation-only.
 `dynamic` inserts an obstacle at two seconds and revalidates the remaining
 curve before replanning.
 
-Deterministic non-wall-clock runs are available as `ros2 run ece3162_core
-navigation_demo free` (also `static`, `constrained`, and `no_path`).
+The installed simulation entry point is `autonomy_sim_node`; the standalone
+navigation demonstration has been removed in favor of the ROS 2 launch.
 
 Failure regression coverage includes unreachable planning, optimizer rejection,
 stale localization, excessive tracking error, trajectory settling timeout, and
@@ -54,7 +54,7 @@ scripts/test_navigation_action.py` while `autonomy_sim_node` runs with
 
 # Phase 4 native perception navigation
 
-`ros2 launch ece3162_bringup perception_navigation.launch.py` runs the native
+`ros2 launch robotics_bringup perception_navigation.launch.py` runs the native
 stereo-to-navigation chain. Synthetic images are rendered from fixed world
 geometry and moving camera pose; depth and motion are reconstructed by the
 actual stereo/PnP algorithms. The planner consumes the resulting voxel map,

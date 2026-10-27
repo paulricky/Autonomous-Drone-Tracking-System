@@ -1,12 +1,12 @@
 {
-  "name": "ECE3162 ROS 2 Jazzy",
+  "name": "Autonomous Drone Navigation ROS 2 Jazzy",
   "build": {"dockerfile": "Dockerfile", "context": ".."},
-  "workspaceFolder": "/workspaces/ECE3162",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/ECE3162,type=bind",
+  "workspaceFolder": "/workspaces/robotics_ws",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/robotics_ws,type=bind",
   "remoteUser": "root",
   "containerEnv": {"RCUTILS_COLORIZED_OUTPUT": "1"},
   "customizations": {"vscode": {"extensions": [
     "ms-iot.vscode-ros", "ms-vscode.cpptools", "llvm-vs-code-extensions.vscode-clangd", "ms-python.python"
   ]}},
-  "postCreateCommand": "bash -lc 'source /opt/ros/jazzy/setup.bash && rosdep update && rosdep install --from-paths src --ignore-src -r -y && colcon list --base-paths src'"
+  "postCreateCommand": "bash -lc 'source /opt/ros/jazzy/setup.bash && colcon list --base-paths src'"
 }

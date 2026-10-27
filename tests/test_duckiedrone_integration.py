@@ -2,14 +2,14 @@ import math
 import numpy as np
 import pytest
 
-from ece3162.integration.drone_bridge import DuckiedroneBridge, MemoryPublisher
-from ece3162.integration.frames import GridFrame2D, planar_path_to_xyz
-from ece3162.integration.waypoint_manager import MissionState, WaypointConfig, WaypointManager
-from ece3162.mapping.obstacle_inflation import inflate_obstacles
-from ece3162.mapping.voxel_map import VoxelMap
-from ece3162.planning.astar import AStarPlanner
-from ece3162.planning.collision_checker import CollisionChecker
-from ece3162.simulation.waypoint_closed_loop import ManualClock, PointMassConfig, run_closed_loop
+from robotics_tools.integration.drone_bridge import DuckiedroneBridge, MemoryPublisher
+from robotics_tools.integration.frames import GridFrame2D, planar_path_to_xyz
+from robotics_tools.integration.waypoint_manager import MissionState, WaypointConfig, WaypointManager
+from robotics_tools.mapping.obstacle_inflation import inflate_obstacles
+from robotics_tools.mapping.voxel_map import VoxelMap
+from robotics_tools.planning.astar import AStarPlanner
+from robotics_tools.planning.collision_checker import CollisionChecker
+from robotics_tools.simulation.waypoint_closed_loop import ManualClock, PointMassConfig, run_closed_loop
 
 
 def test_grid_world_nonzero_origin_resolution_and_rotation():

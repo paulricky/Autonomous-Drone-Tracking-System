@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ece3162-drone-motion-planning"
+name = "robotics-drone-motion-planning"
 version = "0.1.0"
 description = "Unified autonomous Duckiedrone planning, perception, control, and simulation"
 requires-python = ">=3.11"
@@ -25,17 +25,13 @@ all = [
     "mediapipe==0.10.21; platform_machine != 'aarch64'",
 ]
 
-[project.scripts]
-ece3162-sim = "ece3162.cli:simulation_main"
-ece3162-benchmark = "ece3162.cli:benchmark_main"
-
 [tool.setuptools]
-package-dir = {"" = "src/ece3162"}
+package-dir = {"" = "src/robotics_tools"}
 
 [tool.setuptools.packages.find]
-where = ["src/ece3162"]
+where = ["src/robotics_tools"]
 include = [
-    "ece3162*",
+    "robotics_tools*",
 ]
 namespaces = false
 
