@@ -11,16 +11,16 @@ path.
 | Package | Language | Responsibility |
 |---|---|---|
 | `ece3162_interfaces` | IDL | Navigation action and planner/hardware status |
-| `ece3162_core` | C++17 | ROS-independent MSP and tracking libraries; inert hardware diagnostics |
-| `ece3162_perception` | C++17 | Bounded stereo timestamp pairing and synchronization diagnostics |
+| `ece3162_core` | C++17 | Native planners, B-splines, tracking, dynamics, voxel mapping, inert hardware diagnostics |
+| `ece3162_perception` | C++17 | UVC/synthetic/recorded stereo, rectification, depth/clouds, PnP odometry and state estimation |
 | `ece3162_mission` | Python | Low-rate mission state and cancellation/failure policy |
 | `ece3162_bringup` | Python launch | Installed parameters and hardware-disabled launch |
 | `ece3162_algorithms` | Python | Existing planning, perception, mapping, simulation and benchmarks |
 
 ## Frames and units
 
-All active metric interfaces use SI units. `map` is a drift-corrected global
-ENU frame, `odom` is a locally continuous ENU frame, and `base_link` is FLU
+All active metric interfaces use SI units. In the stereo odometry baseline,
+`map` and `odom` coincide; no global drift correction is implemented. `base_link` is FLU
 (x forward, y left, z up). Camera optical frames use REP 103 optical axes (x
 right, y down, z forward). Physical `base_link` to camera and IMU transforms
 are intentionally absent until measured. A missing critical transform keeps
@@ -36,9 +36,11 @@ the hardware command gate closed.
 | `PlannerStatus` | `ece3162_interfaces/msg/PlannerStatus` | future planning node | per plan | measured latency, explicit state |
 | `FlightControllerStatus` | `ece3162_interfaces/msg/FlightControllerStatus` | future MSP adapter | 1–10 Hz | reports gate independently of link |
 
-Streaming sensor and state data use standard `sensor_msgs`, `nav_msgs`, and
-`geometry_msgs`. No custom image, point-cloud, pose, path, or trajectory type
-is introduced.
+Streaming imagery/clouds/odometry use `sensor_msgs` and `nav_msgs`. The existing
+`VehicleState`, `ControlCommand` and `TimedTrajectory` interfaces remain the
+navigation boundary. See [stereo implementation](STEREO_PERCEPTION.md) for the
+Phase 4 data sources, transforms and QoS. No Python algorithm substitutes for a
+native perception, mapping or localization stage in this launch.
 
 ## Safety ownership
 

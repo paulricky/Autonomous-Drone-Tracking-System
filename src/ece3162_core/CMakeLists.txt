@@ -12,6 +12,8 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(ece3162_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 add_library(${PROJECT_NAME}
   src/msp.cpp src/trajectory_tracker.cpp src/voxel_map.cpp
   src/kinodynamic_astar.cpp src/bspline.cpp src/ego_optimizer.cpp src/dynamics.cpp)
@@ -26,7 +28,7 @@ add_executable(component_benchmark src/component_benchmark.cpp)
 target_link_libraries(component_benchmark ${PROJECT_NAME})
 add_executable(autonomy_sim_node src/autonomy_sim_node.cpp)
 target_link_libraries(autonomy_sim_node ${PROJECT_NAME})
-ament_target_dependencies(autonomy_sim_node rclcpp rclcpp_action ece3162_interfaces std_msgs)
+ament_target_dependencies(autonomy_sim_node rclcpp rclcpp_action ece3162_interfaces std_msgs sensor_msgs tf2_ros)
 ament_target_dependencies(hardware_monitor_node rclcpp rclcpp_lifecycle diagnostic_msgs)
 install(TARGETS ${PROJECT_NAME} hardware_monitor_node navigation_demo component_benchmark autonomy_sim_node EXPORT ${PROJECT_NAME}Targets
   ARCHIVE DESTINATION lib LIBRARY DESTINATION lib RUNTIME DESTINATION lib/${PROJECT_NAME})

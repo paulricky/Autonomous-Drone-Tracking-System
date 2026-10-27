@@ -1,0 +1,18 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-10-27-00-12-31-614844-ad7e88d682a1-219
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [perception_node-1]: process started with pid [222]
+[INFO] [autonomy_sim_node-2]: process started with pid [223]
+[autonomy_sim_node-2] [INFO] [1793059951.854384494] [simulated_drone]: simulated drone initialized; hardware output absent
+[autonomy_sim_node-2] [INFO] [1793059951.877655090] [autonomy_pipeline]: initializing native autonomy pipeline
+[autonomy_sim_node-2] [INFO] [1793059951.915747463] [autonomy_pipeline]: mission_status=waiting:perception map
+[perception_node-1] [INFO] [1793059952.454345511] [stereo_perception]: source=synthetic; localization=stereo PnP + native state estimator; hardware_output=disabled
+[autonomy_sim_node-2] [INFO] [1793059952.935614755] [autonomy_pipeline]: mission_status=planning
+[autonomy_sim_node-2] [INFO] [1793059952.936058329] [autonomy_pipeline]: planning state=(0.000,-0.000,1.000) velocity=(0.000,-0.000,-0.000) occupied=815
+[autonomy_sim_node-2] [INFO] [1793059952.990399867] [autonomy_pipeline]: mission_status=tracking
+[autonomy_sim_node-2] [INFO] [1793059956.096099983] [autonomy_pipeline]: mission_status=failed:localization or map unavailable
+[INFO] [autonomy_sim_node-2]: process has finished cleanly [pid 223]
+[INFO] [launch]: process[autonomy_sim_node-2] was required: shutting down launched system
+[INFO] [perception_node-1]: sending signal 'SIGINT' to process[perception_node-1]
+[perception_node-1] [INFO] [1793059956.346717597] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [perception_node-1]: process has finished cleanly [pid 222]
+[INFO] [launch]: process[perception_node-1] was required: shutting down launched system

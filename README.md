@@ -7,6 +7,23 @@ analysis, and the existing deterministic regression simulations. Physical
 hardware output, arming, takeoff, and motor commands are disabled and absent by
 default.
 
+Phase 4 now connects native C++ stereo acquisition/synchronization, OpenCV
+rectification/SGBM/depth, metric clouds, voxel ray integration, stereo PnP
+odometry and state estimation to the existing native navigation stack.
+The mission manager waits for localization/map readiness before sending an action.
+
+```bash
+# Inside the existing Jazzy container, with this repository mounted at /workspace:
+source /opt/ros/jazzy/setup.bash
+colcon build --base-paths src --packages-up-to ece3162_bringup --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
+ros2 launch ece3162_bringup perception_navigation.launch.py
+```
+
+See [native stereo implementation](docs/STEREO_PERCEPTION.md) for camera,
+recorded-input, frame, and launch details. Comprehensive validation and Pi 5
+performance characterization are reserved for Phase 5. Physical flight remains disabled.
+
 Phase 3 adds a reusable native stack in `ece3162_core`: 6-D double-integrator
 Kinodynamic A*, clamped B-splines with analytical derivatives, an ESDF-free
 EGO-inspired control-point optimizer, feed-forward PD tracking, and bounded

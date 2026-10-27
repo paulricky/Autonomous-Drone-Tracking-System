@@ -1,0 +1,25 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-10-27-10-05-11-885648-954ec1ab9843-47
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [hardware_monitor_node-1]: process started with pid [63]
+[INFO] [perception_node-2]: process started with pid [64]
+[INFO] [autonomy_sim_node-3]: process started with pid [65]
+[INFO] [mission_manager-4]: process started with pid [66]
+[autonomy_sim_node-3] [INFO] [1793095512.417850955] [simulated_drone]: simulated drone initialized; hardware output absent
+[autonomy_sim_node-3] [INFO] [1793095512.447620124] [autonomy_pipeline]: initializing native autonomy pipeline
+[autonomy_sim_node-3] [INFO] [1793095512.517655651] [autonomy_pipeline]: mission_status=waiting:perception map
+[perception_node-2] [INFO] [1793095513.687566354] [stereo_perception]: source=synthetic; localization=stereo PnP + native state estimator; hardware_output=disabled
+[autonomy_sim_node-3] [INFO] [1793095514.177793075] [autonomy_pipeline]: mission_status=planning
+[autonomy_sim_node-3] [INFO] [1793095514.178514619] [autonomy_pipeline]: planning state=(0.000,-0.000,1.000) velocity=(0.000,-0.000,-0.000) occupied=1496
+[autonomy_sim_node-3] [INFO] [1793095514.298538627] [autonomy_pipeline]: mission_status=tracking
+[autonomy_sim_node-3] [INFO] [1793095524.777941208] [autonomy_pipeline]: mission_status=succeeded
+[autonomy_sim_node-3] [INFO] [1793095524.778146326] [autonomy_pipeline]: metrics planning_ms=5.418840 optimization_ms=113.250018 pipeline_ms=120.379764 integrated_replan_ms=0.000000 replans=0 rms_error_m=0.061242 max_error_m=0.159457 final_error_m=0.123576 control_mean_ms=20.189640 control_max_ms=69.849795 deadline_misses=273 callback_mean_ms=0.107318 callback_max_ms=8.024411
+[INFO] [autonomy_sim_node-3]: process has finished cleanly [pid 65]
+[INFO] [launch]: process[autonomy_sim_node-3] was required: shutting down launched system
+[INFO] [mission_manager-4]: sending signal 'SIGINT' to process[mission_manager-4]
+[INFO] [perception_node-2]: sending signal 'SIGINT' to process[perception_node-2]
+[INFO] [hardware_monitor_node-1]: sending signal 'SIGINT' to process[hardware_monitor_node-1]
+[perception_node-2] [INFO] [1793095525.552552162] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[hardware_monitor_node-1] [INFO] [1793095525.553797879] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [hardware_monitor_node-1]: process has finished cleanly [pid 63]
+[INFO] [mission_manager-4]: process has finished cleanly [pid 66]
+[INFO] [perception_node-2]: process has finished cleanly [pid 64]

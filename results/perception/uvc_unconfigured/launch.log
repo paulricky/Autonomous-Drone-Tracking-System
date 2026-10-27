@@ -1,0 +1,11 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-10-27-09-56-31-288802-1cc30ecd4c6f-251
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [uvc_stereo_node-1]: process started with pid [254]
+[INFO] [perception_node-2]: process started with pid [255]
+[uvc_stereo_node-1] [FATAL] [1793094991.921086511] [uvc_stereo]: calibration_file is required; supply measured stereo calibration
+[perception_node-2] [FATAL] [1793094991.948955737] [stereo_perception]: calibration_file is required; supply measured stereo calibration
+[ERROR] [uvc_stereo_node-1]: process has died [pid 254, exit code 2, cmd '/workspace/install/ece3162_perception/lib/ece3162_perception/uvc_stereo_node --ros-args --params-file /tmp/launch_params_timbm3kk'].
+[INFO] [launch]: process[uvc_stereo_node-1] was required: shutting down launched system
+[INFO] [perception_node-2]: sending signal 'SIGINT' to process[perception_node-2]
+[ERROR] [perception_node-2]: process has died [pid 255, exit code -2, cmd '/workspace/install/ece3162_perception/lib/ece3162_perception/perception_node --ros-args --params-file /tmp/launch_params_zhpt_x6l'].
+[INFO] [launch]: process[perception_node-2] was required: shutting down launched system

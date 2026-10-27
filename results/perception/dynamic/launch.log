@@ -1,0 +1,28 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-10-27-10-09-17-370403-3aa7b5ddd223-48
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [hardware_monitor_node-1]: process started with pid [64]
+[INFO] [perception_node-2]: process started with pid [65]
+[INFO] [autonomy_sim_node-3]: process started with pid [66]
+[INFO] [mission_manager-4]: process started with pid [67]
+[autonomy_sim_node-3] [INFO] [1793095758.457427611] [simulated_drone]: simulated drone initialized; hardware output absent
+[autonomy_sim_node-3] [INFO] [1793095758.513562257] [autonomy_pipeline]: initializing native autonomy pipeline
+[autonomy_sim_node-3] [INFO] [1793095758.603334646] [autonomy_pipeline]: mission_status=waiting:perception map
+[perception_node-2] [INFO] [1793095759.393440937] [stereo_perception]: source=synthetic; localization=stereo PnP + native state estimator; hardware_output=disabled
+[autonomy_sim_node-3] [INFO] [1793095763.064172188] [autonomy_pipeline]: mission_status=planning
+[autonomy_sim_node-3] [INFO] [1793095763.064908431] [autonomy_pipeline]: planning state=(0.000,0.000,1.001) velocity=(0.000,0.000,0.000) occupied=1611
+[autonomy_sim_node-3] [INFO] [1793095763.300805245] [autonomy_pipeline]: mission_status=tracking
+[autonomy_sim_node-3] [INFO] [1793095764.964511819] [autonomy_pipeline]: mission_status=planning
+[autonomy_sim_node-3] [INFO] [1793095764.965365289] [autonomy_pipeline]: planning state=(0.720,0.073,1.855) velocity=(0.573,0.090,0.532) occupied=1969
+[autonomy_sim_node-3] [INFO] [1793095765.321184039] [autonomy_pipeline]: mission_status=tracking:replanned
+[autonomy_sim_node-3] [ERROR] [1793095765.321612819] [autonomy_pipeline]: tracker rejected state: reason=invalid or stale localization age_s=0.518899 state_valid=1
+[autonomy_sim_node-3] [INFO] [1793095765.323167444] [autonomy_pipeline]: mission_status=failed:invalid or stale localization
+[INFO] [autonomy_sim_node-3]: process has finished cleanly [pid 66]
+[INFO] [launch]: process[autonomy_sim_node-3] was required: shutting down launched system
+[INFO] [mission_manager-4]: sending signal 'SIGINT' to process[mission_manager-4]
+[INFO] [perception_node-2]: sending signal 'SIGINT' to process[perception_node-2]
+[INFO] [hardware_monitor_node-1]: sending signal 'SIGINT' to process[hardware_monitor_node-1]
+[perception_node-2] [INFO] [1793095765.702879020] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[hardware_monitor_node-1] [INFO] [1793095765.712315112] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [hardware_monitor_node-1]: process has finished cleanly [pid 64]
+[INFO] [perception_node-2]: process has finished cleanly [pid 65]
+[INFO] [mission_manager-4]: process has finished cleanly [pid 67]

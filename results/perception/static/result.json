@@ -1,0 +1,131 @@
+{
+  "scenario": "static",
+  "terminal": "succeeded",
+  "exit_code": 0,
+  "expected_observation_timeout": false,
+  "mission_timeout": false,
+  "wall_s": 14.636618983999938,
+  "images": 118,
+  "frame_hz": 9.981140616027542,
+  "map_updates": 109,
+  "map_hz": 10.011132663883641,
+  "estimate_hz": 10.000026390539952,
+  "privileged_estimates": 0,
+  "trajectories": 1,
+  "traveled_m": 5.139013979486999,
+  "collision_samples": 0,
+  "minimum_clearance_m": 0.4781894352853615,
+  "truth_goal_error_m": 0.12174016446364103,
+  "rms_truth_tracking_error_m": 0.09889308789946719,
+  "max_truth_tracking_error_m": 0.20682023666924906,
+  "image_to_control_age_ms": {
+    "count": 520,
+    "mean": 49.568561407235954,
+    "median": 49.155473709106445,
+    "std": 29.261397609098022,
+    "p95": 89.31609392166138,
+    "max": 137.83645629882812
+  },
+  "cpu_seconds": 14.697226,
+  "peak_child_rss_kib": 115532,
+  "numerical": {
+    "rectify_ms": {
+      "count": 115,
+      "mean": 1.1466949304347824,
+      "median": 1.077423,
+      "std": 0.24161766357898812,
+      "p95": 1.4321959999999996,
+      "max": 3.258104
+    },
+    "disparity_ms": {
+      "count": 115,
+      "mean": 16.187819086956523,
+      "median": 15.530039,
+      "std": 1.748547706434763,
+      "p95": 21.228652699999998,
+      "max": 25.700808
+    },
+    "depth_ms": {
+      "count": 115,
+      "mean": 3.7570367826086954,
+      "median": 3.702299,
+      "std": 0.16842417466647466,
+      "p95": 4.0498705,
+      "max": 4.606052
+    },
+    "cloud_ms": {
+      "count": 115,
+      "mean": 0.033806217391304356,
+      "median": 0.027848,
+      "std": 0.016722378207598292,
+      "p95": 0.08025019999999997,
+      "max": 0.105609
+    },
+    "vo_ms": {
+      "count": 115,
+      "mean": 33.02332882608696,
+      "median": 33.321792,
+      "std": 7.406000875861375,
+      "p95": 39.0725841,
+      "max": 92.078168
+    },
+    "estimator_ms": {
+      "count": 115,
+      "mean": 0.00609162608695652,
+      "median": 0.005424,
+      "std": 0.0016301418367783592,
+      "p95": 0.0088425,
+      "max": 0.014809
+    },
+    "total_ms": {
+      "count": 115,
+      "mean": 55.01854046086956,
+      "median": 54.410469,
+      "std": 7.610886891446302,
+      "p95": 62.952738200000006,
+      "max": 113.660508
+    },
+    "depth_mae_m": {
+      "count": 115,
+      "mean": 0.07040601571320526,
+      "median": 0.0628522682772813,
+      "std": 0.029216880772869776,
+      "p95": 0.12858166037214191,
+      "max": 0.142164644962355
+    },
+    "position_error_m": {
+      "count": 115,
+      "mean": 0.013795959083900858,
+      "median": 0.010864765554904,
+      "std": 0.007343718215859671,
+      "p95": 0.0273865526473552,
+      "max": 0.0293709922952142
+    },
+    "valid_fraction": {
+      "count": 115,
+      "mean": 0.7925175498188406,
+      "median": 0.794921875,
+      "std": 0.00669038859807197,
+      "p95": 0.796079427083333,
+      "max": 0.7965625
+    }
+  },
+  "native_metrics": [
+    {
+      "planning_ms": 5.41884,
+      "optimization_ms": 113.250018,
+      "pipeline_ms": 120.379764,
+      "integrated_replan_ms": 0.0,
+      "replans": 0.0,
+      "rms_error_m": 0.061242,
+      "max_error_m": 0.159457,
+      "final_error_m": 0.123576,
+      "control_mean_ms": 20.18964,
+      "control_max_ms": 69.849795,
+      "deadline_misses": 273.0,
+      "callback_mean_ms": 0.107318,
+      "callback_max_ms": 8.024411
+    }
+  ],
+  "passed": true
+}

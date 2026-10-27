@@ -1,0 +1,108 @@
+{
+  "scenario": "localization",
+  "terminal": null,
+  "exit_code": 0,
+  "expected_observation_timeout": true,
+  "mission_timeout": false,
+  "wall_s": 7.347927025999979,
+  "images": 53,
+  "frame_hz": 9.629537199983453,
+  "map_updates": 0,
+  "map_hz": 0,
+  "estimate_hz": 9.622119581843691,
+  "privileged_estimates": 0,
+  "trajectories": 0,
+  "traveled_m": 0,
+  "collision_samples": 0,
+  "minimum_clearance_m": null,
+  "truth_goal_error_m": null,
+  "rms_truth_tracking_error_m": null,
+  "max_truth_tracking_error_m": null,
+  "image_to_control_age_ms": null,
+  "cpu_seconds": 6.111453999999996,
+  "peak_child_rss_kib": 115816,
+  "numerical": {
+    "rectify_ms": {
+      "count": 50,
+      "mean": 2.09238322,
+      "median": 1.5415945,
+      "std": 3.5271473287576254,
+      "p95": 2.2163134999999974,
+      "max": 26.72834
+    },
+    "disparity_ms": {
+      "count": 50,
+      "mean": 23.484745359999998,
+      "median": 22.6699445,
+      "std": 3.7944662451505815,
+      "p95": 23.89923965,
+      "max": 44.902205
+    },
+    "depth_ms": {
+      "count": 50,
+      "mean": 5.2483965,
+      "median": 5.233558,
+      "std": 0.09797340379863298,
+      "p95": 5.40409,
+      "max": 5.574495
+    },
+    "cloud_ms": {
+      "count": 50,
+      "mean": 0.04391158,
+      "median": 0.039553000000000005,
+      "std": 0.018114519361098154,
+      "p95": 0.06663864999999987,
+      "max": 0.141307
+    },
+    "vo_ms": {
+      "count": 50,
+      "mean": 37.222485940000006,
+      "median": 37.1255335,
+      "std": 2.534445903169735,
+      "p95": 40.8501597,
+      "max": 41.384131
+    },
+    "estimator_ms": {
+      "count": 50,
+      "mean": 0.008793500000000001,
+      "median": 0.007518,
+      "std": 0.0064967871513541215,
+      "p95": 0.00978115,
+      "max": 0.053711
+    },
+    "total_ms": {
+      "count": 50,
+      "mean": 68.90863687999999,
+      "median": 67.957373,
+      "std": 7.608201524112448,
+      "p95": 73.5996613,
+      "max": 114.948685
+    },
+    "depth_mae_m": {
+      "count": 50,
+      "mean": 0.14267209588569896,
+      "median": 0.143294193950661,
+      "std": 0.006037898884608206,
+      "p95": 0.15111631545277915,
+      "max": 0.152083659622298
+    },
+    "position_error_m": {
+      "count": 50,
+      "mean": 0.04895783661628199,
+      "median": 0.05415598332461115,
+      "std": 0.018296302676817464,
+      "p95": 0.06836451723980878,
+      "max": 0.068456955024631
+    },
+    "valid_fraction": {
+      "count": 50,
+      "mean": 0.7746658854166667,
+      "median": 0.7748828125,
+      "std": 0.0010468802147983866,
+      "p95": 0.776001953125,
+      "max": 0.777252604166667
+    }
+  },
+  "native_metrics": [],
+  "passed": true
+}

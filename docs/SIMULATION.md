@@ -51,3 +51,18 @@ stale localization, excessive tracking error, trajectory settling timeout, and
 action cancellation. The action smoke test is `python3
 scripts/test_navigation_action.py` while `autonomy_sim_node` runs with
 `auto_start:=false`.
+
+# Phase 4 native perception navigation
+
+`ros2 launch ece3162_bringup perception_navigation.launch.py` runs the native
+stereo-to-navigation chain. Synthetic images are rendered from fixed world
+geometry and moving camera pose; depth and motion are reconstructed by the
+actual stereo/PnP algorithms. The planner consumes the resulting voxel map,
+and tracking consumes `perception/state_estimate`. The low-rate Python mission
+manager only handles readiness and the navigation action.
+
+See [stereo implementation](STEREO_PERCEPTION.md) for the four launch modes,
+dynamic/sensor-loss arguments and assumptions. The bounded synthetic test volume
+explicitly allows unknown cells; conservative unknown handling remains the
+default for other perception-map runs. Comprehensive validation is deferred to
+Phase 5. Historical reference simulations above remain available.

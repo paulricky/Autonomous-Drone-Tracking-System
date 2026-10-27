@@ -5,7 +5,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     python3-ruff python3-rosdep python3-vcstool ros-dev-tools \
     ros-jazzy-diagnostic-updater ros-jazzy-image-transport ros-jazzy-cv-bridge \
     ros-jazzy-tf2-ros ros-jazzy-rviz2 ros-jazzy-rosbag2 \
-    libopencv-dev && rm -rf /var/lib/apt/lists/*
+    libopencv-dev v4l-utils ros-jazzy-cv-bridge ros-jazzy-image-transport \
+    ros-jazzy-camera-info-manager && rm -rf /var/lib/apt/lists/*
 RUN rosdep init 2>/dev/null || true
 WORKDIR /workspaces/ECE3162
 COPY requirements-ros.txt /tmp/requirements-ros.txt

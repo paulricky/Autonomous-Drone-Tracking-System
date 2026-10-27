@@ -124,3 +124,23 @@ rebound optimizer or topology search.
 Core classes contain no ROS types. New boundary messages are
 `TrajectoryPoint`, `TimedTrajectory`, `VehicleState`, and `ControlCommand`.
 Physical MSP output, arming, motors, and serial access remain excluded.
+
+# Phase 4 implementation checkpoint — 2026-10-27
+
+Native stereo processing, geometry-based rendering, PnP RANSAC odometry and a
+timestamp/quality-checking state estimator are now connected to the existing
+voxel mapper and navigation pipeline. The mission manager submits the existing
+navigation action after map/state readiness. Python algorithm references remain
+available but are not selected by this runtime. C++ sources/headers in active
+packages are formatted with the repository style; archives were not touched.
+
+The earlier compiler error was a `cv::MatCommaInitializer_` passed directly to
+`warpAffine`; materializing a `cv::Mat` fixed it. The VehicleState discovery
+error came from sourcing the overlay in a backgrounded shell chain, not failed
+IDL generation. Source the ROS installation and workspace overlay in the shell
+that executes the ROS command.
+
+Targeted native tests and static closed-loop ROS execution have passed. Full
+parity, long-run stability, dataset/hardware validation and performance campaigns
+are Phase 5 work. See [current stereo implementation](STEREO_PERCEPTION.md).
+The sections above retain the earlier migration history.

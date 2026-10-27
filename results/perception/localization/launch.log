@@ -1,0 +1,9 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-10-27-00-12-45-298949-ad7e88d682a1-333
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [perception_node-1]: process started with pid [336]
+[perception_node-1] [INFO] [1793059966.149870615] [stereo_perception]: source=synthetic; localization=stereo PnP + native state estimator; hardware_output=disabled
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [perception_node-1]: sending signal 'SIGINT' to process[perception_node-1]
+[perception_node-1] [INFO] [1793059971.670368708] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[perception_node-1] [INFO] [1793059971.673809714] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [perception_node-1]: process has finished cleanly [pid 336]

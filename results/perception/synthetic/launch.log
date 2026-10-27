@@ -1,0 +1,17 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-10-27-00-12-38-662572-ad7e88d682a1-276
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [perception_node-1]: process started with pid [279]
+[INFO] [autonomy_sim_node-2]: process started with pid [280]
+[autonomy_sim_node-2] [INFO] [1793059958.959150663] [simulated_drone]: simulated drone initialized; hardware output absent
+[autonomy_sim_node-2] [INFO] [1793059958.986251233] [autonomy_pipeline]: initializing native autonomy pipeline
+[autonomy_sim_node-2] [INFO] [1793059959.026752056] [autonomy_pipeline]: mission_status=waiting:perception map
+[perception_node-1] [INFO] [1793059959.643551149] [stereo_perception]: source=synthetic; localization=stereo PnP + native state estimator; hardware_output=disabled
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [autonomy_sim_node-2]: sending signal 'SIGINT' to process[autonomy_sim_node-2]
+[INFO] [perception_node-1]: sending signal 'SIGINT' to process[perception_node-1]
+[perception_node-1] [INFO] [1793059964.328410548] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[autonomy_sim_node-2] [INFO] [1793059964.328363807] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[autonomy_sim_node-2] [INFO] [1793059964.335556428] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[perception_node-1] [INFO] [1793059964.337141541] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [autonomy_sim_node-2]: process has finished cleanly [pid 280]
+[INFO] [perception_node-1]: process has finished cleanly [pid 279]

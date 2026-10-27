@@ -1,8 +1,3 @@
-#include "ece3162_core/bspline.hpp"
-#include "ece3162_core/dynamics.hpp"
-#include "ece3162_core/ego_optimizer.hpp"
-#include "ece3162_core/kinodynamic_astar.hpp"
-#include "ece3162_core/trajectory_tracker.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -11,11 +6,129 @@
 #include <numeric>
 #include <string>
 
+#include "ece3162_core/bspline.hpp"
+#include "ece3162_core/dynamics.hpp"
+#include "ece3162_core/ego_optimizer.hpp"
+#include "ece3162_core/kinodynamic_astar.hpp"
+#include "ece3162_core/trajectory_tracker.hpp"
+
 using namespace ece3162::navigation;
-struct Metrics{bool success{};double planning{},optimization{},duration{},rms{},maximum{},final_error{},planned_length{},travel{},min_clearance{1e9};std::size_t expansions{},collisions{},vviol{},aviol{};};
-static double length(const std::vector<Vec3>&p){double x=0;for(std::size_t i=1;i<p.size();++i)x+=norm(sub(p[i],p[i-1]));return x;}
-static Metrics run(std::string scenario){VoxelMap map({-1,-2,0},{7,2,3},.25,Occupancy::kFree);Vec3 start{0,0,1},goal{5,0,1};if(scenario=="static") {map.fill_box({1.5,-.6,0},{2.5,.6,2.5});map.fill_box({3.2,-2,0},{3.8,-.4,2.5});}if(scenario=="constrained"){map.fill_box({1,-2,0},{1.7,.3,2.4});map.fill_box({2.4,-.3,0},{3.1,2,2.4});map.fill_box({3.8,-2,0},{4.5,.3,2.4});}if(scenario=="no_path")map.fill_box({1,-2,0},{4.5,2,3});
-  KinodynamicConfig kc;kc.heuristic_weight=2;kc.timeout_s=5;kc.max_expansions=80000;auto planned=KinodynamicAStar(kc).plan({start,{0,0,0},0},goal,map);Metrics m;m.planning=planned.planning_time_s;m.expansions=planned.expanded;if(!planned.success){std::cout<<"{\"scenario\":\""<<scenario<<"\",\"success\":false,\"reason\":\""<<planned.message<<"\"}\n";return m;}std::vector<Vec3> guide;for(auto&s:planned.states)guide.push_back(s.position);if(norm(sub(guide.back(),goal))>.01)guide.push_back(goal);while(guide.size()<4)guide.insert(guide.end()-1,mul(add(guide[guide.size()-2],guide.back()),.5));double spline_duration=std::max(5.0,planned.cost*1.8);EgoOptimizer optimizer;auto optimized=optimizer.optimize(guide,map,spline_duration,{1.5,2});m.optimization=optimized.optimization_time_s;if(!optimized.success){std::cout<<"{\"scenario\":\""<<scenario<<"\",\"success\":false,\"reason\":\""<<optimized.message<<"\"}\n";return m;}m.vviol=optimized.feasibility.velocity_violations;m.aviol=optimized.feasibility.acceleration_violations;std::vector<Vec3> refs;for(auto&s:optimized.trajectory->sample(.02))refs.push_back(s.position);m.planned_length=length(refs);
-  ece3162::control::TrajectoryTracker tracker({4,2.8,2,2,.25});DoubleIntegrator sim({start,{0,0,0},0},{.02,1.5,2,.002,.003,.04,7});std::vector<Vec3> actual{start};double sum2=0;std::size_t n=0;while(sim.ground_truth().stamp<spline_duration+3){auto est=sim.estimated_state();double t=std::min(sim.ground_truth().stamp,spline_duration);auto sample=optimized.trajectory->evaluate(t);if(t>=spline_duration){sample.velocity={};sample.acceleration={};}ece3162::control::Reference ref{sample.position,sample.velocity,sample.acceleration,t};ece3162::control::State state{est.position,est.velocity,est.stamp,true};auto cmd=tracker.update(sim.ground_truth().stamp,ref,state);if(!cmd)break;sum2+=cmd->tracking_error*cmd->tracking_error;m.maximum=std::max(m.maximum,cmd->tracking_error);++n;sim.step(cmd->acceleration);actual.push_back(sim.ground_truth().position);if(t>=spline_duration&&norm(sub(sim.ground_truth().position,goal))<.15&&norm(sim.ground_truth().velocity)<.15){m.success=true;break;}}
-  m.duration=sim.ground_truth().stamp;m.rms=std::sqrt(sum2/std::max<std::size_t>(1,n));m.final_error=norm(sub(sim.ground_truth().position,goal));m.travel=length(actual);for(auto&p:actual){if(map.occupied(p)){++m.collisions;m.min_clearance=0;}for(auto&o:map.occupied_centers())m.min_clearance=std::min(m.min_clearance,norm(sub(p,o)));}std::cout<<"{\"scenario\":\""<<scenario<<"\",\"success\":"<<(m.success?"true":"false")<<",\"planning_time_s\":"<<m.planning<<",\"optimization_time_s\":"<<m.optimization<<",\"expanded_states\":"<<m.expansions<<",\"planned_length_m\":"<<m.planned_length<<",\"traveled_m\":"<<m.travel<<",\"rms_error_m\":"<<m.rms<<",\"max_error_m\":"<<m.maximum<<",\"final_error_m\":"<<m.final_error<<",\"mission_duration_s\":"<<m.duration<<",\"minimum_clearance_m\":"<<m.min_clearance<<",\"collisions\":"<<m.collisions<<",\"velocity_violations\":"<<m.vviol<<",\"acceleration_violations\":"<<m.aviol<<"}\n";return m;}
-int main(int argc,char**argv){std::string scenario=argc>1?argv[1]:"free";auto m=run(scenario);return scenario=="no_path"?(m.success?1:0):(m.success&&m.collisions==0?0:1);}
+struct Metrics {
+  bool success{};
+  double planning{}, optimization{}, duration{}, rms{}, maximum{}, final_error{}, planned_length{},
+      travel{}, min_clearance{1e9};
+  std::size_t expansions{}, collisions{}, vviol{}, aviol{};
+};
+static double length(const std::vector<Vec3>& p) {
+  double x = 0;
+  for (std::size_t i = 1; i < p.size(); ++i)
+    x += norm(sub(p[i], p[i - 1]));
+  return x;
+}
+static Metrics run(std::string scenario) {
+  VoxelMap map({-1, -2, 0}, {7, 2, 3}, .25, Occupancy::kFree);
+  Vec3 start{0, 0, 1}, goal{5, 0, 1};
+  if (scenario == "static") {
+    map.fill_box({1.5, -.6, 0}, {2.5, .6, 2.5});
+    map.fill_box({3.2, -2, 0}, {3.8, -.4, 2.5});
+  }
+  if (scenario == "constrained") {
+    map.fill_box({1, -2, 0}, {1.7, .3, 2.4});
+    map.fill_box({2.4, -.3, 0}, {3.1, 2, 2.4});
+    map.fill_box({3.8, -2, 0}, {4.5, .3, 2.4});
+  }
+  if (scenario == "no_path")
+    map.fill_box({1, -2, 0}, {4.5, 2, 3});
+  KinodynamicConfig kc;
+  kc.heuristic_weight = 2;
+  kc.timeout_s = 5;
+  kc.max_expansions = 80000;
+  auto planned = KinodynamicAStar(kc).plan({start, {0, 0, 0}, 0}, goal, map);
+  Metrics m;
+  m.planning = planned.planning_time_s;
+  m.expansions = planned.expanded;
+  if (!planned.success) {
+    std::cout << "{\"scenario\":\"" << scenario << "\",\"success\":false,\"reason\":\""
+              << planned.message << "\"}\n";
+    return m;
+  }
+  std::vector<Vec3> guide;
+  for (auto& s : planned.states)
+    guide.push_back(s.position);
+  if (norm(sub(guide.back(), goal)) > .01)
+    guide.push_back(goal);
+  while (guide.size() < 4)
+    guide.insert(guide.end() - 1, mul(add(guide[guide.size() - 2], guide.back()), .5));
+  double spline_duration = std::max(5.0, planned.cost * 1.8);
+  EgoOptimizer optimizer;
+  auto optimized = optimizer.optimize(guide, map, spline_duration, {1.5, 2});
+  m.optimization = optimized.optimization_time_s;
+  if (!optimized.success) {
+    std::cout << "{\"scenario\":\"" << scenario << "\",\"success\":false,\"reason\":\""
+              << optimized.message << "\"}\n";
+    return m;
+  }
+  m.vviol = optimized.feasibility.velocity_violations;
+  m.aviol = optimized.feasibility.acceleration_violations;
+  std::vector<Vec3> refs;
+  for (auto& s : optimized.trajectory->sample(.02))
+    refs.push_back(s.position);
+  m.planned_length = length(refs);
+  ece3162::control::TrajectoryTracker tracker({4, 2.8, 2, 2, .25});
+  DoubleIntegrator sim({start, {0, 0, 0}, 0}, {.02, 1.5, 2, .002, .003, .04, 7});
+  std::vector<Vec3> actual{start};
+  double sum2 = 0;
+  std::size_t n = 0;
+  while (sim.ground_truth().stamp < spline_duration + 3) {
+    auto est = sim.estimated_state();
+    double t = std::min(sim.ground_truth().stamp, spline_duration);
+    auto sample = optimized.trajectory->evaluate(t);
+    if (t >= spline_duration) {
+      sample.velocity = {};
+      sample.acceleration = {};
+    }
+    ece3162::control::Reference ref{sample.position, sample.velocity, sample.acceleration, t};
+    ece3162::control::State state{est.position, est.velocity, est.stamp, true};
+    auto cmd = tracker.update(sim.ground_truth().stamp, ref, state);
+    if (!cmd)
+      break;
+    sum2 += cmd->tracking_error * cmd->tracking_error;
+    m.maximum = std::max(m.maximum, cmd->tracking_error);
+    ++n;
+    sim.step(cmd->acceleration);
+    actual.push_back(sim.ground_truth().position);
+    if (t >= spline_duration && norm(sub(sim.ground_truth().position, goal)) < .15 &&
+        norm(sim.ground_truth().velocity) < .15) {
+      m.success = true;
+      break;
+    }
+  }
+  m.duration = sim.ground_truth().stamp;
+  m.rms = std::sqrt(sum2 / std::max<std::size_t>(1, n));
+  m.final_error = norm(sub(sim.ground_truth().position, goal));
+  m.travel = length(actual);
+  for (auto& p : actual) {
+    if (map.occupied(p)) {
+      ++m.collisions;
+      m.min_clearance = 0;
+    }
+    for (auto& o : map.occupied_centers())
+      m.min_clearance = std::min(m.min_clearance, norm(sub(p, o)));
+  }
+  std::cout << "{\"scenario\":\"" << scenario << "\",\"success\":" << (m.success ? "true" : "false")
+            << ",\"planning_time_s\":" << m.planning
+            << ",\"optimization_time_s\":" << m.optimization
+            << ",\"expanded_states\":" << m.expansions
+            << ",\"planned_length_m\":" << m.planned_length << ",\"traveled_m\":" << m.travel
+            << ",\"rms_error_m\":" << m.rms << ",\"max_error_m\":" << m.maximum
+            << ",\"final_error_m\":" << m.final_error << ",\"mission_duration_s\":" << m.duration
+            << ",\"minimum_clearance_m\":" << m.min_clearance << ",\"collisions\":" << m.collisions
+            << ",\"velocity_violations\":" << m.vviol << ",\"acceleration_violations\":" << m.aviol
+            << "}\n";
+  return m;
+}
+int main(int argc, char** argv) {
+  std::string scenario = argc > 1 ? argv[1] : "free";
+  auto m = run(scenario);
+  return scenario == "no_path" ? (m.success ? 1 : 0) : (m.success && m.collisions == 0 ? 0 : 1);
+}

@@ -1,5 +1,12 @@
 # Hardware readiness checklist
 
+Phase 4 UVC acquisition supports configured persistent Linux video-device paths,
+with OpenCV/V4L2 host-reception timestamps. No OV9281 cameras or Raspberry Pi 5
+were available for testing. Real stereo calibration, mounting extrinsics, dual
+USB bandwidth/power, exposure timing, disconnect behavior and synchronization
+remain unverified. Synthetic rig parameters must not be treated as physical
+calibration. The camera-only launch does not start navigation or flight output.
+
 Live autonomous flight is blocked. Complete this checklist with propellers off
 and an accessible physical kill/disarm control before considering tethered or
 restrained testing.

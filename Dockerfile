@@ -1,6 +1,10 @@
 FROM ros:jazzy-ros-base-noble AS build
 SHELL ["/bin/bash", "-c"]
-RUN apt-get update && apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-rosdep python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-colcon-common-extensions python3-rosdep python3-pip \
+    libopencv-dev v4l-utils clang-format-18 \
+    ros-jazzy-cv-bridge ros-jazzy-image-transport ros-jazzy-camera-info-manager \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /workspace
 COPY . .
 RUN source /opt/ros/jazzy/setup.bash && \

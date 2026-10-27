@@ -12,7 +12,7 @@ jobs:
         shell: bash
         run: |
           apt-get update
-          apt-get install -y python3-colcon-common-extensions python3-rosdep python3-pip python3-pytest
+          apt-get install -y python3-colcon-common-extensions python3-rosdep python3-pip python3-pytest clang-format-18
           rosdep init 2>/dev/null || true
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
@@ -22,6 +22,11 @@ jobs:
       - name: Build
         shell: bash
         run: source /opt/ros/jazzy/setup.bash && colcon list --base-paths src && colcon build --base-paths src --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release
+      - name: Native C++ formatting
+        run: find src/ece3162_core src/ece3162_perception -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -exec clang-format-18 --dry-run --Werror -style=file {} +
+      - name: Native perception navigation smoke
+        shell: bash
+        run: source /opt/ros/jazzy/setup.bash && source install/setup.bash && python3 scripts/validate_phase4_ros.py --scenarios static disconnect
       - name: ROS tests
         shell: bash
         run: source /opt/ros/jazzy/setup.bash && source install/setup.bash && colcon test --base-paths src --event-handlers console_direct+ && colcon test-result --verbose
