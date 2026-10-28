@@ -1,4 +1,4 @@
-# Phase 5 deployment and bench preparation
+# Raspberry Pi 5 deployment and bench preparation
 
 The release image uses the ROS 2 Jazzy Ubuntu 24.04 base for `amd64` and `arm64`.
 Build on the Raspberry Pi 5 for the ARM64 deployment milestone. A build on
@@ -27,6 +27,12 @@ deployment path. Neither starts autonomous flight.
    /opt/robotics/install/setup.bash; colcon list --base-paths
    /opt/robotics/workspace/src'` to inspect package discovery.
 
+The build script checks that the host and Docker daemon architectures match,
+selects the native platform explicitly, and limits compilation to two jobs
+with sequential package builds. CI also builds the complete release image on
+an ARM64 runner; its execution must be checked before treating ARM64 compilation
+as verified. The AMD64 development path is retained.
+
 ## Development and updates
 
 Use `.devcontainer` for AMD64 development; `compose.yaml` runs the inert
@@ -51,32 +57,38 @@ in `deployment_data/`. The script does not enable hardware output.
    selected paths and measured settings. Set a calibrated software pairing
    tolerance. Host monotonic receipt timestamps are paired; USB cameras have
    no established hardware synchronization here.
-3. Capture stationary checkerboard pairs at varied positions and tilts using
-   `ros2 run stereo_perception capture_stereo LEFT RIGHT WIDTH HEIGHT FPS
-   MAX_DELTA_MS COUNT OUTPUT_DIR`.
+3. Set `LEFT_CAMERA_DEVICE` and `RIGHT_CAMERA_DEVICE` to the selected persistent
+   paths. Capture stationary checkerboard pairs at varied positions and tilts:
+   `scripts/pi_deploy.sh capture 640 480 20 5 20 board_run`
+   (add a four-character format argument only after confirming it with
+   `v4l2-ctl --list-formats-ext`).
    This installed C++ executable prompts before each pair and saves a CSV
    manifest with both device paths and host monotonic timestamps. It rejects
-   pairs beyond the tolerance. Run it with the two device mappings inside a
-   container or from a native ROS installation. Use at least eight usable
+   pairs beyond the tolerance. It maps the two selected devices into the
+   container and writes `deployment_data/calibration/board_run/`. Use at least eight usable
    pairs with measured checkerboard square size.
-4. Run `ros2 launch robotics_bringup camera_calibration.launch.py
-   left_glob:=... right_glob:=... columns:=... rows:=... square_m:=...
-   output:=... left_camera_id:=... right_camera_id:=...`. This estimates
+4. Run `scripts/pi_deploy.sh calibrate board_run 7 5 0.04`, replacing the board
+   dimensions and measured square size. This estimates
    individual intrinsics, distortion, stereo rotation/translation, and
    rectification matrices, and rejects poor reprojection quality. The identity
-   strings must exactly match the device paths used for acquisition. Inspect
-   the result before putting it under `deployment_data/calibration/` and
+   strings come from `LEFT_CAMERA_DEVICE` and `RIGHT_CAMERA_DEVICE` and must
+   exactly match the device paths used for acquisition. Inspect
+   `deployment_data/calibration/board_run/stereo.yaml` before
    pointing both camera and perception parameters at it. No baseline is
    assumed before calibration.
-5. Measure the transform from the body frame to the left optical frame and
-   fill the translation in meters and Rodrigues rotation vector in radians.
+5. Set both calibration paths in `deployment_data/config/hardware.yaml` to
+   `/var/lib/robotics/calibration/board_run/stereo.yaml`. Measure the transform
+   from the body frame to the left optical frame. Fill the translation in body
+   coordinates in meters and the Rodrigues rotation offset from the REP 103
+   optical convention in radians.
    The external perception node refuses missing mounting parameters. The
    configured initial position is a local VO origin, not a surveyed global
    pose. With paths, calibration, and mounting set, run
    `LEFT_CAMERA_DEVICE=... RIGHT_CAMERA_DEVICE=... scripts/pi_deploy.sh camera`.
 
 The UVC node acquires each camera on its own thread, maps host monotonic
-receipt time into the ROS clock domain, publishes raw mono images, and reports
+receipt time into the ROS clock domain, publishes raw mono images and raw
+`CameraInfo` on matching topics, and reports
 read failures, estimated receipt gaps, and reconnects. The perception node
 rejects stale images and pairs with timestamp difference above
 `max_pair_delta_s`. It publishes calibrated camera info and rectified data.
@@ -99,17 +111,26 @@ scale, axes, covariance, timing, and gravity convention are measured. It never
 sends `MSP_SET_RAW_RC` or changes a mode. MSP v1 has no transaction ID; the
 transport matches each response to its requested command and uses bounded
 timeouts.
+Record the board, firmware family, and firmware version in the configuration
+before integrated bring-up. These are operator inventory fields; the telemetry
+probe still treats physical control behavior as unverified.
 
 ## Startup, shutdown, and diagnostics
 
 `scripts/pi_deploy.sh start` runs diagnostics only. `scripts/pi_deploy.sh
 stop` stops it. `scripts/pi_deploy.sh logs` displays its logs. Run
-`scripts/pi_diagnostics.sh` to save OS, USB, device, Docker, and ROS graph
+`scripts/pi_deploy.sh diagnose` to save OS, USB, device, supported V4L2 modes,
+serial permissions, Docker, and ROS graph
 information under `deployment_data/diagnostics/`. In a running container,
 inspect `ros2 node list`, `ros2 topic list -t`, `ros2 topic echo
 /diagnostics`, `ros2 topic hz /camera/left/image_raw`, and `ros2 topic hz
 /camera/right/image_raw`. `hardware_diagnostics.launch.py` starts the
 read-only telemetry and gate diagnostics nodes without cameras. With all
+camera and read-only transport settings supplied, `scripts/pi_deploy.sh sensors`
+starts stereo localization, raw telemetry, and the closed gate without a
+planner/controller. Inspect `/perception/diagnostics`, `/visual_odometry`,
+`/perception/state_estimate`, and `/flight_controller/raw_telemetry`; raw IMU
+counts remain unfused. With all
 measured settings supplied, `scripts/pi_deploy.sh integration` starts the
 cameras, stereo estimator, read-only telemetry, and existing autonomy node
 without its simulator. No mission goal is submitted. The physical command
@@ -122,6 +143,10 @@ camera identities, image dimensions, checkerboard detection, and stored
 matrices. If MSP `IDENT` is absent, check the exact board firmware, UART/USB
 port, baud, wiring, and host permissions before changing protocol settings.
 Do not infer compatibility from the archived Python bridge.
+After USB re-enumeration changes a device minor number, stop and restart the
+foreground container launch to recreate its explicit device mappings. Native
+acquisition retries the persistent path; Docker mappings may retain the old
+device number. Verify both recovery paths on the bench.
 
 ## Physical verification remaining
 

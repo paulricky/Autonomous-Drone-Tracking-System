@@ -110,7 +110,7 @@ state. `mission/cancel` (std_msgs/Empty) requests action cancellation.
 Targeted native tests cover depth, matrix validation, stereo motion/rotation,
 state freshness/loss and batch mapping semantics. A static ROS mission using
 perception occupancy and PnP estimates has succeeded; sensor-loss smoke tests
-have produced explicit failures. `scripts/validate_phase4_ros.py` retains a
+have produced explicit failures. `scripts/validate_ros_integration.py` retains a
 software observation hook for Phase 5. Comprehensive parity,
 calibration coverage, recorded datasets, drift, mapping accuracy, overload,
 long-duration stability, Pi 5 performance and physical OV9281 operation remain

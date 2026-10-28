@@ -57,7 +57,7 @@ def run(scenario, root):
         command += ["disconnect_after_frames:=30"]
     elif scenario == "localization_loss":
         command += ["low_texture_after_frames:=30"]
-    node = rclpy.create_node("phase4_evaluator")
+    node = rclpy.create_node("ros_integration_evaluator")
     status, truth, estimates, controls, images, maps, trajectories = [], [], [], [], [], [], []
     subs = [
         node.create_subscription(String, "mission/status", lambda m: status.append(m.data), 10),
@@ -155,7 +155,9 @@ def run(scenario, root):
             connected = connected and bool(result["braking_commands"])
         result["passed"] = expected and not timed_out and connected
     elif scenario == "uvc_unconfigured":
-        result["passed"] = "cannot open calibration" in log or "calibration" in log and "FATAL" in log
+        result["passed"] = process.returncode != 0 and not images and (
+            "persistent device path missing or unavailable" in log or
+            "cannot open calibration" in log or "calibration" in log and "FATAL" in log)
     else:
         result["passed"] = len(images) > 10 and any(e[2] for e in estimates)
     with (output/"truth.csv").open("w") as f:

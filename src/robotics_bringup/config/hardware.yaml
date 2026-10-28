@@ -32,6 +32,9 @@ msp_telemetry:
     serial_device: /dev/serial/by-id/CONTROLLER_UNCONFIGURED
     baud_rate: 115200
     protocol: unverified
+    controller_board: UNCONFIGURED
+    firmware_family: UNCONFIGURED
+    firmware_version: UNCONFIGURED
     timestamp_policy: ros_poll_completion
 autonomy_pipeline:
   ros__parameters:

@@ -3,9 +3,9 @@
 
 #include "stereo_perception/stereo_pipeline.hpp"
 int main(int argc, char** argv) {
-  if (argc != 7 && argc != 9) {
+  if (argc != 9) {
     std::cerr
-        << "usage: calibrate_stereo LEFT_GLOB RIGHT_GLOB COLUMNS ROWS SQUARE_METERS OUTPUT.yaml [LEFT_CAMERA_ID RIGHT_CAMERA_ID]\n";
+        << "usage: calibrate_stereo LEFT_GLOB RIGHT_GLOB COLUMNS ROWS SQUARE_METERS OUTPUT.yaml LEFT_CAMERA_ID RIGHT_CAMERA_ID\n";
     return 2;
   }
   try {
@@ -22,13 +22,17 @@ int main(int argc, char** argv) {
     double usable{};
     auto calibration = robotics::perception::calibrate_chessboard(
         left, right, {std::stoi(argv[3]), std::stoi(argv[4])}, std::stod(argv[5]), &usable);
-    if (argc == 9) {
-      calibration.left_camera_id = argv[7];
-      calibration.right_camera_id = argv[8];
-    }
-    if (calibration.rms_error > 1.0 || usable * left.size() < 8)
+    calibration.left_camera_id = argv[7];
+    calibration.right_camera_id = argv[8];
+    if (calibration.left_camera_id.empty() || calibration.right_camera_id.empty() ||
+        calibration.left_camera_id == calibration.right_camera_id ||
+        calibration.left_camera_id.find("UNCONFIGURED") != std::string::npos ||
+        calibration.right_camera_id.find("UNCONFIGURED") != std::string::npos)
+      throw std::invalid_argument("distinct measured left/right camera identities are required");
+    if (calibration.rms_error > 1.0 || calibration.left_rms_error > 1.0 ||
+        calibration.right_rms_error > 1.0 || usable * left.size() < 8)
       throw std::runtime_error(
-          "calibration quality rejected: require RMS <= 1 pixel and 8 detected pairs");
+          "calibration quality rejected: require each RMS <= 1 pixel and 8 detected pairs");
     calibration.save(argv[6]);
     std::cout << "stereo_rms_pixels=" << calibration.rms_error
               << " left_rms_pixels=" << calibration.left_rms_error

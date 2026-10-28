@@ -1,6 +1,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iomanip>
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
@@ -8,8 +9,8 @@
 #include "stereo_perception/stereo_pipeline.hpp"
 
 int main(int argc, char** argv) {
-  if (argc != 9) {
-    std::cerr << "usage: capture_stereo LEFT_DEVICE RIGHT_DEVICE WIDTH HEIGHT FPS MAX_DELTA_MS COUNT OUTPUT_DIR\n";
+  if (argc != 9 && argc != 10) {
+    std::cerr << "usage: capture_stereo LEFT_DEVICE RIGHT_DEVICE WIDTH HEIGHT FPS MAX_DELTA_MS COUNT OUTPUT_DIR [FOURCC]\n";
     return 2;
   }
   try {
@@ -19,7 +20,7 @@ int main(int argc, char** argv) {
     const double fps = std::stod(argv[5]), tolerance = std::stod(argv[6]) / 1000.;
     if (left == right || left.find("UNCONFIGURED") != std::string::npos ||
         right.find("UNCONFIGURED") != std::string::npos ||
-        !fs::exists(left) || !fs::exists(right) ||
+        !fs::exists(left) || !fs::exists(right) || fs::equivalent(left, right) ||
         (left.rfind("/dev/v4l/by-id/", 0) != 0 && left.rfind("/dev/v4l/by-path/", 0) != 0) ||
         (right.rfind("/dev/v4l/by-id/", 0) != 0 && right.rfind("/dev/v4l/by-path/", 0) != 0) ||
         width < 16 || height < 16 ||
@@ -27,9 +28,18 @@ int main(int argc, char** argv) {
         tolerance <= 0 || count < 8 || count > 10000)
       throw std::invalid_argument("invalid capture devices or settings");
     const fs::path output(argv[8]);
+    if (fs::exists(output) && !fs::is_empty(output))
+      throw std::invalid_argument("capture output must be new or empty; existing measurements are preserved");
     fs::create_directories(output);
-    robotics::perception::UvcCamera l({left, "left", width, height, fps});
-    robotics::perception::UvcCamera r({right, "right", width, height, fps});
+    int fourcc = 0;
+    if (argc == 10) {
+      const std::string format = argv[9];
+      if (format.size() != 4)
+        throw std::invalid_argument("FOURCC must have exactly four characters");
+      fourcc = cv::VideoWriter::fourcc(format[0], format[1], format[2], format[3]);
+    }
+    robotics::perception::UvcCamera l({left, "left", width, height, fps, -1, -1, fourcc});
+    robotics::perception::UvcCamera r({right, "right", width, height, fps, -1, -1, fourcc});
     std::ofstream manifest(output / "manifest.csv");
     if (!manifest)
       throw std::runtime_error("cannot write capture manifest");
@@ -42,7 +52,11 @@ int main(int argc, char** argv) {
       if (!std::getline(std::cin, input)) break;
       bool saved = false;
       for (int attempt = 0; attempt < 20; ++attempt) {
-        const auto a = l.read(), b = r.read();
+        // Independent USB cameras must be acquired concurrently. Sequential blocking
+        // reads introduce a full frame period of artificial timestamp skew.
+        auto left_read = std::async(std::launch::async, [&l] { return l.read(); });
+        const auto b = r.read();
+        const auto a = left_read.get();
         if (!a || !b || std::abs(a->receive_time - b->receive_time) > tolerance)
           continue;
         const auto number = std::to_string(accepted);

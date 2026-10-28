@@ -1,7 +1,7 @@
 # Hardware readiness checklist
 
 The implementation and operator procedures are in
-[Phase 5 deployment and bench preparation](PHASE5_DEPLOYMENT.md). The
+[Pi deployment and bench preparation](PI_DEPLOYMENT.md). The
 read-only MSP probe and physical command gate remain non-actuating.
 
 Phase 4 UVC acquisition supports configured persistent Linux video-device paths,

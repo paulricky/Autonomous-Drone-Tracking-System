@@ -44,6 +44,10 @@ std::optional<Packet> SerialTelemetry::query(std::uint8_t command,
     throw std::invalid_argument("MSP query is not on the read-only allowlist");
   if (!connected() || timeout.count() <= 0 || timeout.count() > 1000)
     throw std::invalid_argument("serial connection or timeout invalid");
+  // MSP v1 has no transaction ID. Drop a timed-out partial reply and any
+  // already queued bytes before issuing the next single outstanding query.
+  parser_.discard_partial();
+  if (::tcflush(fd_, TCIFLUSH) != 0) { close_port(); return std::nullopt; }
   const auto request = encode(command);
   auto deadline = std::chrono::steady_clock::now() + timeout;
   std::size_t written = 0;

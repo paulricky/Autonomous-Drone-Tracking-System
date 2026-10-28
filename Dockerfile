@@ -15,7 +15,7 @@ RUN rosdep init 2>/dev/null || true; rosdep update && apt-get update && \
     rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy && \
     rm -rf /var/lib/apt/lists/*
 RUN source /opt/ros/jazzy/setup.bash && \
-    colcon build --base-paths src --install-base /opt/robotics/install \
+    MAKEFLAGS=-j2 colcon build --executor sequential --base-paths src --install-base /opt/robotics/install \
       --cmake-args -DCMAKE_BUILD_TYPE=Release
 RUN mkdir -p /var/lib/robotics/calibration /var/log/robotics
 ENV ROS_DISTRO=jazzy

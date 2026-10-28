@@ -27,7 +27,7 @@ jobs:
         run: find src/robotics_core src/stereo_perception -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -exec clang-format-18 --dry-run --Werror -style=file {} +
       - name: Native perception navigation smoke
         shell: bash
-        run: source /opt/ros/jazzy/setup.bash && source install/setup.bash && /tmp/robotics-venv/bin/python scripts/validate_phase4_ros.py --scenarios static disconnect
+        run: source /opt/ros/jazzy/setup.bash && source install/setup.bash && /tmp/robotics-venv/bin/python scripts/validate_ros_integration.py --scenarios static disconnect
       - name: ROS tests
         shell: bash
         run: source /opt/ros/jazzy/setup.bash && source install/setup.bash && export PATH=/tmp/robotics-venv/bin:$PATH && colcon test --base-paths src --event-handlers console_direct+ && colcon test-result --verbose
@@ -36,13 +36,11 @@ jobs:
         run: /tmp/robotics-venv/bin/python scripts/run_duckiedrone_sim.py --scenario baseline
   arm64-source-build:
     runs-on: ubuntu-24.04-arm
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Validate portable Python core
+      - name: Build Jazzy workspace natively on ARM64
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-venv
-          python3 -m venv /tmp/robotics-arm-venv
-          /tmp/robotics-arm-venv/bin/python -m pip install -e '.[dev]'
-          /tmp/robotics-arm-venv/bin/python -m pytest -q
+          test "$(uname -m)" = aarch64
+          docker build --pull --platform linux/arm64 -t robotics-jazzy:arm64-ci -f Dockerfile .
+          docker run --rm --platform linux/arm64 robotics-jazzy:arm64-ci bash -lc \
+            'source /opt/ros/jazzy/setup.bash && source /opt/robotics/install/setup.bash && colcon list --base-paths /opt/robotics/workspace/src && ros2 pkg executables stereo_perception'

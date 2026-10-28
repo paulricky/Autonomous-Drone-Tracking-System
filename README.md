@@ -5,7 +5,7 @@ navigation. Performance- and timing-sensitive code runs in native C++17
 libraries; Python remains responsible for mission coordination, experiments,
 analysis, and the existing deterministic regression simulations. Physical
 hardware output, arming, takeoff, and motor commands are disabled and absent by
-default. [Phase 5 deployment procedures](docs/PHASE5_DEPLOYMENT.md) cover the
+default. [Pi deployment procedures](docs/PI_DEPLOYMENT.md) cover the
 Pi 5 image, physical stereo calibration, read-only telemetry, and diagnostics.
 
 The native simulation launch connects C++ stereo acquisition/synchronization, OpenCV
@@ -29,7 +29,7 @@ See [native stereo implementation](docs/STEREO_PERCEPTION.md) for camera,
 recorded-input, frame, and launch details. Pi 5 physical validation remains
 separate from the software build. Physical flight remains disabled.
 
-Phase 3 adds a reusable native stack in `robotics_core`: 6-D double-integrator
+The native stack in `robotics_core` includes 6-D double-integrator
 Kinodynamic A*, clamped B-splines with analytical derivatives, an ESDF-free
 EGO-inspired control-point optimizer, feed-forward PD tracking, and bounded
 double-integrator dynamics. Run the hardware-inert system with:

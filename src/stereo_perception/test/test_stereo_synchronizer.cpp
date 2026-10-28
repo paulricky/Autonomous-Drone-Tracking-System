@@ -30,7 +30,8 @@ TEST(StereoSynchronizer, RejectsNonMonotonicAndBoundsQueue) {
   StereoSynchronizer sync(0.005, 1);
   EXPECT_TRUE(sync.push_left(FrameStamp{1, 2.0}));
   EXPECT_FALSE(sync.push_left(FrameStamp{2, 1.0}));
+  EXPECT_FALSE(sync.push_left(FrameStamp{2, 2.0}));
   EXPECT_TRUE(sync.push_left(FrameStamp{3, 3.0}));
-  EXPECT_EQ(sync.stats().non_monotonic, 1u);
+  EXPECT_EQ(sync.stats().non_monotonic, 2u);
   EXPECT_EQ(sync.stats().queue_overflow, 1u);
 }

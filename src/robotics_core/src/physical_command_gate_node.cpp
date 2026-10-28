@@ -24,21 +24,32 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
     limits.estimate_age_s = declare_parameter("estimate_age_s", .25);
     gate_ = robotics::control::CommandGate(limits);
     if (declare_parameter("hardware_output_enabled", false))
-      throw std::invalid_argument("physical command transmission is unavailable in Phase 5");
+      throw std::invalid_argument("physical command transmission is unavailable");
     auto sensor = rclcpp::SensorDataQoS();
     command_ = create_subscription<flight_interfaces::msg::ControlCommand>(
         "control/acceleration", rclcpp::QoS(1).best_effort(),
         [this](flight_interfaces::msg::ControlCommand::SharedPtr m) {
-          last_command_ = robotics::control::CommandSample{
+          auto sample = robotics::control::CommandSample{
               rclcpp::Time(m->header.stamp).seconds(), m->trajectory_id,
               {m->acceleration.x, m->acceleration.y, m->acceleration.z},
               m->braking, m->header.frame_id};
+          last_command_error_ = gate_.check_common(sample, now().seconds());
+          if (last_command_error_.empty()) {
+            if (sample.stamp <= last_seen_command_stamp_)
+              last_command_error_ = "replayed command";
+            else
+              last_seen_command_stamp_ = sample.stamp;
+          }
+          last_command_ = sample;
           report();
         });
     state_ = create_subscription<flight_interfaces::msg::VehicleState>(
         "perception/state_estimate", sensor,
         [this](flight_interfaces::msg::VehicleState::SharedPtr m) {
-          health_.estimate_healthy = m->valid && !m->ground_truth && m->header.frame_id == "map";
+          const auto finite = [](double x) { return std::isfinite(x); };
+          health_.estimate_healthy = m->valid && !m->ground_truth && m->header.frame_id == "map" &&
+              finite(m->position.x) && finite(m->position.y) && finite(m->position.z) &&
+              finite(m->velocity.x) && finite(m->velocity.y) && finite(m->velocity.z);
           health_.estimate_stamp = rclcpp::Time(m->header.stamp).seconds();
         });
     trajectory_ = create_subscription<flight_interfaces::msg::TimedTrajectory>(
@@ -47,6 +58,19 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
           health_.trajectory_valid = m->trajectory_id != 0 && !m->points.empty() &&
                                      std::isfinite(m->duration) && m->duration > 0 &&
                                      m->header.frame_id == "map";
+          double previous_time = -1;
+          for (const auto& point : m->points) {
+            const double t = point.time_from_start.sec + point.time_from_start.nanosec * 1e-9;
+            const auto& p = point.position;
+            const auto& v = point.velocity;
+            const auto& a = point.acceleration;
+            if (!std::isfinite(t) || t < 0 || t <= previous_time || t > m->duration + 1e-6 ||
+                !std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
+                !std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
+                !std::isfinite(a.x) || !std::isfinite(a.y) || !std::isfinite(a.z))
+              health_.trajectory_valid = false;
+            previous_time = t;
+          }
           health_.trajectory_start = rclcpp::Time(m->header.stamp).seconds();
           health_.trajectory_end = health_.trajectory_start + m->duration;
           health_.trajectory_id = m->trajectory_id;
@@ -70,12 +94,14 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
   void report() {
     health_.operator_authorized = get_parameter("operator_authorized").as_bool();
     health_.emergency_stop = get_parameter("emergency_stop").as_bool();
-    // No verified firmware mapping, mode, or failsafe is available in this phase.
+    // Firmware mapping, mode, and failsafe behavior remain unverified.
     health_.protocol_verified = false;
     health_.configuration_verified = false;
     health_.operating_mode_known = false;
-    std::string reason = last_command_ ? gate_.check_physical(*last_command_, now().seconds(), health_)
-                                       : "no command received";
+    std::string reason = last_command_ ?
+        (last_command_error_.empty() ? gate_.check_physical(*last_command_, now().seconds(), health_)
+                                     : last_command_error_)
+        : "no command received";
     if (reason.empty()) reason = "physical encoding and transmission unavailable";
     diagnostic_msgs::msg::DiagnosticArray array;
     array.header.stamp = now();
@@ -94,6 +120,8 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
   robotics::control::CommandGate gate_;
   robotics::control::PhysicalHealth health_;
   std::optional<robotics::control::CommandSample> last_command_;
+  std::string last_command_error_;
+  double last_seen_command_stamp_{};
   rclcpp::Subscription<flight_interfaces::msg::ControlCommand>::SharedPtr command_;
   rclcpp::Subscription<flight_interfaces::msg::VehicleState>::SharedPtr state_;
   rclcpp::Subscription<flight_interfaces::msg::TimedTrajectory>::SharedPtr trajectory_;

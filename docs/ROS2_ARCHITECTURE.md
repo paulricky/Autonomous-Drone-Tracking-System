@@ -70,7 +70,7 @@ estimator. `read_only_telemetry.launch.py` starts only the MSP probe.
 `hardware_integration.launch.py` starts camera perception, telemetry, and
 autonomy with `simulate_vehicle=false` and `auto_start=false`; it also reports
 the closed physical command gate. It submits no navigation goal. See
-[Phase 5 deployment](PHASE5_DEPLOYMENT.md) for required measured configuration.
+[Pi deployment](PI_DEPLOYMENT.md) for required measured configuration.
 # Native navigation simulation
 
 `autonomy_sim.launch.py` starts the inert hardware monitor and two C++ ROS

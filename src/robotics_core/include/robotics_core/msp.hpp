@@ -41,6 +41,7 @@ std::vector<std::uint8_t> encode_raw_rc(
 class Parser {
  public:
   std::optional<Packet> push(std::uint8_t byte);
+  void discard_partial() noexcept { reset(); }
   std::size_t invalid_packets() const noexcept {
     return invalid_packets_;
   }

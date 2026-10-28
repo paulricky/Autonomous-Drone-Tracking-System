@@ -164,6 +164,9 @@ StereoCalibration StereoCalibration::load(const std::string& path) {
   cv::FileStorage f(path, cv::FileStorage::READ);
   if (!f.isOpened())
     throw std::runtime_error("cannot open calibration " + path);
+  for (const auto* key : {"rms_error", "left_rms_error", "right_rms_error", "provenance"})
+    if (f[key].empty())
+      throw std::runtime_error(std::string("calibration quality metadata missing: ") + key);
   StereoCalibration c;
   f["K_left"] >> c.k_left;
   f["D_left"] >> c.d_left;
@@ -206,7 +209,7 @@ StereoCalibration calibrate_chessboard(const std::vector<cv::Mat>& left,
                                        const std::vector<cv::Mat>& right, cv::Size pattern,
                                        double square, double* usable) {
   if (left.size() != right.size() || left.size() < 3 || pattern.width < 2 || pattern.height < 2 ||
-      square <= 0)
+      !std::isfinite(square) || square <= 0)
     throw std::invalid_argument("invalid chessboard calibration input");
   cv::Size size = left.front().size();
   std::vector<std::vector<cv::Point2f>> lp, rp;

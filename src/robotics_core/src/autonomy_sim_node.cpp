@@ -526,7 +526,9 @@ class AutonomyNode final : public rclcpp::Node {
           rclcpp::shutdown();
           return;
         }
-        elapsed = 0;
+        // Planning can block the single-threaded executor long enough for this
+        // state sample to expire. Process queued observations before tracking.
+        return;
       }
     }
     if (scenario_ == "dynamic" && !dynamic_added_ && elapsed > 2) {
@@ -535,6 +537,7 @@ class AutonomyNode final : public rclcpp::Node {
       awaiting_replan_control_ = true;
       map_.fill_box({2.3, -.45, 0}, {3.0, .45, 2.5});
       if (active_unsafe(elapsed)) {
+        brake();
         trajectory_.reset();
         ++replans_;
         if (!plan(s)) {
@@ -543,7 +546,7 @@ class AutonomyNode final : public rclcpp::Node {
             rclcpp::shutdown();
           return;
         }
-        elapsed = 0;
+        return;
       } else
         awaiting_replan_control_ = false;
     }

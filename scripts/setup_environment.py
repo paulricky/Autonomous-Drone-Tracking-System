@@ -7,7 +7,7 @@ import platform
 import sys
 
 REQUIRED = ("numpy", "yaml", "matplotlib", "pytest", "mujoco")
-OPTIONAL_LATER_PHASES = ("cv2", "mediapipe", "mavsdk")
+OPTIONAL_MODULES = ("cv2", "mediapipe", "mavsdk")
 
 
 def main() -> int:
@@ -22,7 +22,7 @@ def main() -> int:
         print(f"required {module:12} {'OK' if available else 'MISSING'}")
         if not available:
             missing.append(module)
-    for module in OPTIONAL_LATER_PHASES:
+    for module in OPTIONAL_MODULES:
         available = importlib.util.find_spec(module) is not None
         print(f"later    {module:12} {'available' if available else 'not installed'}")
     if missing:

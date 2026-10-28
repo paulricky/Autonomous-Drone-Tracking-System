@@ -12,7 +12,7 @@ StereoSynchronizer::StereoSynchronizer(double max_delta_seconds, std::size_t max
 bool StereoSynchronizer::push(std::deque<FrameStamp>& queue, FrameStamp frame,
                               std::optional<double>& latest) {
   if (!std::isfinite(frame.host_timestamp_seconds) ||
-      (latest && frame.host_timestamp_seconds < *latest)) {
+      (latest && frame.host_timestamp_seconds <= *latest)) {
     ++stats_.non_monotonic;
     return false;
   }

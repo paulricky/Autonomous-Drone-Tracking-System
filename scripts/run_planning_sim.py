@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.planner != "astar":
-        print(f"Planner '{args.planner}' is reserved for the next implementation phase.", file=sys.stderr)
+        print(f"Planner '{args.planner}' is not implemented.", file=sys.stderr)
         return 2
     planning = load_yaml(ROOT / "config/planning.yaml")
     mapping = load_yaml(ROOT / "config/mapping.yaml")

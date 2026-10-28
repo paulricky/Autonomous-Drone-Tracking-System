@@ -109,6 +109,11 @@ class PerceptionNode final : public rclcpp::Node {
       throw std::invalid_argument("mode must be synthetic, recorded, or external");
     auto calibration = mode_ == "synthetic" ? synthetic_->calibration()
                                             : ep::StereoCalibration::load(calibration_path);
+    if (mode_ == "external" &&
+        (calibration.provenance != "OpenCV chessboard stereo calibration" ||
+         calibration.rms_error > 1.0 || calibration.left_rms_error > 1.0 ||
+         calibration.right_rms_error > 1.0))
+      throw std::invalid_argument("external perception requires measured, quality-checked stereo calibration");
     cv::Matx44d raw_from_rectified = cv::Matx44d::eye();
     for (int i = 0; i < 3; ++i)
       for (int j = 0; j < 3; ++j)

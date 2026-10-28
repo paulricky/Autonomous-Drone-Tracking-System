@@ -1,6 +1,6 @@
 # Raspberry Pi 5 deployment
 
-Use [Phase 5 deployment and bench preparation](PHASE5_DEPLOYMENT.md) for the
+Use [Pi deployment and bench preparation](PI_DEPLOYMENT.md) for the
 native ARM64 build, persistent configuration, camera calibration, read-only
 telemetry, startup, shutdown, and diagnostics procedures. The production
 planning and perception path is C++17; Python remains for tooling. The Pi 5

@@ -1,11 +1,14 @@
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <iterator>
 #include <atomic>
 #include <mutex>
 #include <thread>
 #include <cv_bridge/cv_bridge.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
 #include "stereo_perception/stereo_pipeline.hpp"
@@ -37,12 +40,19 @@ class UvcStereoNode final : public rclcpp::Node {
         (left.rfind("/dev/v4l/by-id/", 0) != 0 && left.rfind("/dev/v4l/by-path/", 0) != 0) ||
         (right.rfind("/dev/v4l/by-id/", 0) != 0 && right.rfind("/dev/v4l/by-path/", 0) != 0))
       throw std::invalid_argument("invalid dual-camera configuration");
+    if (std::filesystem::equivalent(left, right))
+      throw std::invalid_argument("left and right camera paths resolve to the same video device");
     auto calibration = ep::StereoCalibration::load(file);
+    if (calibration.provenance != "OpenCV chessboard stereo calibration" ||
+        calibration.rms_error > 1.0 || calibration.left_rms_error > 1.0 ||
+        calibration.right_rms_error > 1.0)
+      throw std::invalid_argument("physical operation requires measured, quality-checked stereo calibration");
     if (calibration.left_camera_id.empty() || calibration.left_camera_id != left ||
         calibration.right_camera_id != right)
       throw std::invalid_argument("camera device identities do not match measured calibration");
     if (calibration.image_size != cv::Size(width, height))
       throw std::invalid_argument("camera resolution/calibration mismatch");
+    calibration_ = std::move(calibration);
     int fourcc = 0;
     if (!format.empty()) {
       if (format.size() != 4)
@@ -63,6 +73,10 @@ class UvcStereoNode final : public rclcpp::Node {
                                                           rclcpp::SensorDataQoS().keep_last(1));
     right_pub_ = create_publisher<sensor_msgs::msg::Image>("camera/right/image_raw",
                                                            rclcpp::SensorDataQoS().keep_last(1));
+    left_info_ = create_publisher<sensor_msgs::msg::CameraInfo>(
+        "camera/left/camera_info", rclcpp::SensorDataQoS().keep_last(1));
+    right_info_ = create_publisher<sensor_msgs::msg::CameraInfo>(
+        "camera/right/camera_info", rclcpp::SensorDataQoS().keep_last(1));
     diag_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("perception/diagnostics", 10);
     running_ = true;
     left_thread_ = std::thread([this] { acquire(true); });
@@ -85,6 +99,22 @@ class UvcStereoNode final : public rclcpp::Node {
     h.stamp = ros_anchor - rclcpp::Duration::from_seconds(std::max(0., monotonic_anchor - f.receive_time));
     h.frame_id = left ? left_frame_ : right_frame_;
     (left ? left_pub_ : right_pub_)->publish(*cv_bridge::CvImage(h, "mono8", f.image).toImageMsg());
+    sensor_msgs::msg::CameraInfo info;
+    info.header = h;
+    info.width = calibration_.image_size.width;
+    info.height = calibration_.image_size.height;
+    info.distortion_model = "plumb_bob";
+    const auto& k = left ? calibration_.k_left : calibration_.k_right;
+    const auto& d = left ? calibration_.d_left : calibration_.d_right;
+    std::copy_n(k.ptr<double>(), 9, info.k.begin());
+    std::copy_n(d.ptr<double>(), d.total(), std::back_inserter(info.d));
+    // CameraInfo carries raw K/D and the measured rectification R/P, so
+    // downstream image processing can rectify the corresponding raw image.
+    const auto& r = left ? calibration_.r_left : calibration_.r_right;
+    const auto& p = left ? calibration_.p_left : calibration_.p_right;
+    std::copy_n(r.ptr<double>(), 9, info.r.begin());
+    std::copy_n(p.ptr<double>(), 12, info.p.begin());
+    (left ? left_info_ : right_info_)->publish(info);
   }
   void acquire(bool left) {
     auto& camera = left ? left_cam_ : right_cam_;
@@ -133,6 +163,7 @@ class UvcStereoNode final : public rclcpp::Node {
     diag_->publish(a);
   }
   std::unique_ptr<ep::UvcCamera> left_cam_, right_cam_;
+  ep::StereoCalibration calibration_;
   std::string left_frame_, right_frame_;
   std::atomic<bool> running_{false};
   std::thread left_thread_, right_thread_;
@@ -140,6 +171,7 @@ class UvcStereoNode final : public rclcpp::Node {
   ep::AcquisitionStats left_stats_, right_stats_;
   std::size_t last_left_frames_{}, last_right_frames_{};
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr left_pub_, right_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr left_info_, right_info_;
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

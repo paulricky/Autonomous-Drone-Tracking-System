@@ -41,7 +41,6 @@ class MspTelemetryNode final : public rclcpp::Node {
  private:
   void tick() {
     flight_interfaces::msg::MspRawTelemetry raw;
-    raw.stamp = now();
     std::string detail = "transport disabled; no serial device opened";
     if (serial_) {
       if (!serial_->connected() && !serial_->open_port()) {
@@ -89,7 +88,9 @@ class MspTelemetryNode final : public rclcpp::Node {
             ++valid_packets_;
           }
         } else {
-          detail = "MSP IDENT unavailable or malformed; physical protocol unverified";
+          detail = ident_packet && ident_packet->error
+                       ? "controller explicitly rejected MSP v1 IDENT; check firmware and port protocol"
+                       : "MSP IDENT unavailable or malformed; check baud, wiring and firmware protocol";
           if (++missed_ident_ >= 3) {
             serial_->close_port();
             missed_ident_ = 0;
@@ -98,6 +99,9 @@ class MspTelemetryNode final : public rclcpp::Node {
         if (ident) missed_ident_ = 0;
       }
     }
+    // This aggregate is stamped at host poll completion, never as controller
+    // sensor acquisition time. Individual replies may span several queries.
+    raw.stamp = now();
     raw_->publish(raw);
     flight_interfaces::msg::FlightControllerStatus status;
     status.stamp = raw.stamp;
