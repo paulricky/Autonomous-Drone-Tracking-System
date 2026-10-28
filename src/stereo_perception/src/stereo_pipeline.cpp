@@ -1,5 +1,6 @@
 #include "stereo_perception/stereo_pipeline.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <limits>
@@ -21,9 +22,14 @@ UvcCamera::UvcCamera(CameraConfig c) : config_(std::move(c)) {
   if (config_.device.empty() || config_.source_id.empty() || config_.width <= 0 ||
       config_.height <= 0 || config_.fps <= 0)
     throw std::invalid_argument("invalid camera configuration");
-  capture_.open(config_.device, cv::CAP_V4L2);
-  if (!capture_.isOpened())
+  if (!configure_capture())
     throw std::runtime_error("cannot open UVC camera " + config_.device);
+}
+bool UvcCamera::configure_capture() {
+  capture_.release();
+  if (!capture_.open(config_.device, cv::CAP_V4L2))
+    return false;
+  unsupported_.clear();
   if (!capture_.set(cv::CAP_PROP_BUFFERSIZE, 1))
     unsupported_.push_back("buffer_size");
   if (!capture_.set(cv::CAP_PROP_FRAME_WIDTH, config_.width))
@@ -38,14 +44,46 @@ UvcCamera::UvcCamera(CameraConfig c) : config_(std::move(c)) {
     unsupported_.push_back("exposure");
   if (config_.gain >= 0 && !capture_.set(cv::CAP_PROP_GAIN, config_.gain))
     unsupported_.push_back("gain");
+  if (cvRound(capture_.get(cv::CAP_PROP_FRAME_WIDTH)) != config_.width ||
+      cvRound(capture_.get(cv::CAP_PROP_FRAME_HEIGHT)) != config_.height) {
+    capture_.release();
+    return false;
+  }
+  if (config_.fourcc && cvRound(capture_.get(cv::CAP_PROP_FOURCC)) != config_.fourcc) {
+    capture_.release();
+    return false;
+  }
+  const double negotiated_fps = capture_.get(cv::CAP_PROP_FPS);
+  if (std::isfinite(negotiated_fps) && negotiated_fps > 0 &&
+      std::abs(negotiated_fps - config_.fps) > std::max(.5, config_.fps * .05)) {
+    capture_.release();
+    return false;
+  }
+  if (!std::isfinite(negotiated_fps) || negotiated_fps <= 0)
+    unsupported_.push_back("frame_rate_query");
+  return true;
 }
 UvcCamera::~UvcCamera() {
   capture_.release();
 }
 std::optional<ImageFrame> UvcCamera::read() {
+  if (!capture_.isOpened()) {
+    const double time = monotonic();
+    if (time < next_reconnect_)
+      return std::nullopt;
+    next_reconnect_ = time + 1.;
+    if (!configure_capture()) {
+      ++stats_.failures;
+      return std::nullopt;
+    }
+    ++stats_.reconnects;
+    last_receive_ = 0;
+  }
   cv::Mat image;
   if (!capture_.read(image) || image.empty()) {
     ++stats_.failures;
+    capture_.release();
+    next_reconnect_ = monotonic() + 1.;
     return std::nullopt;
   }
   const double time = monotonic();
@@ -54,6 +92,8 @@ std::optional<ImageFrame> UvcCamera::read() {
   last_receive_ = time;
   if (image.size() != cv::Size(config_.width, config_.height)) {
     ++stats_.failures;
+    capture_.release();
+    next_reconnect_ = monotonic() + 1.;
     return std::nullopt;
   }
   if (image.channels() == 3)
@@ -62,6 +102,8 @@ std::optional<ImageFrame> UvcCamera::read() {
     cv::cvtColor(image, image, cv::COLOR_BGRA2GRAY);
   if (image.type() != CV_8UC1) {
     ++stats_.failures;
+    capture_.release();
+    next_reconnect_ = monotonic() + 1.;
     return std::nullopt;
   }
   ++stats_.frames;
@@ -89,13 +131,30 @@ bool StereoCalibration::valid(std::string* reason) const {
       translation.total() != 3 || translation.type() != CV_64F || !cv::checkRange(translation))
     return fail("invalid Q or translation");
   for (const auto& m : {d_left, d_right})
-    if (m.empty() || m.type() != CV_64F || !cv::checkRange(m))
+    if (m.empty() || m.type() != CV_64F || !cv::checkRange(m) ||
+        (m.rows != 1 && m.cols != 1) || m.total() != 5)
       return fail("invalid distortion coefficients");
   if (baseline() <= 0 || p_left.at<double>(0, 0) <= 0 || p_left.at<double>(1, 1) <= 0 ||
-      std::abs(cv::determinant(rotation) - 1) > 1e-3 || !std::isfinite(rms_error))
+      std::abs(cv::determinant(rotation) - 1) > 1e-3 || !std::isfinite(rms_error) ||
+      rms_error < 0 || !std::isfinite(left_rms_error) || left_rms_error < 0 ||
+      !std::isfinite(right_rms_error) || right_rms_error < 0 || provenance.empty())
     return fail("invalid baseline, rotation, or focal length");
+  for (const auto& k : {k_left, k_right})
+    if (k.at<double>(0, 0) <= 0 || k.at<double>(1, 1) <= 0 ||
+        std::abs(k.at<double>(2, 2) - 1) > 1e-6 ||
+        std::abs(k.at<double>(2, 0)) > 1e-6 || std::abs(k.at<double>(2, 1)) > 1e-6)
+      return fail("invalid intrinsic matrix convention");
+  if (cv::norm(rotation * rotation.t() - cv::Mat::eye(3, 3, CV_64F)) > 1e-3)
+    return fail("non-orthonormal stereo rotation");
+  if ((!left_camera_id.empty() || !right_camera_id.empty()) &&
+      (left_camera_id.empty() || right_camera_id.empty() || left_camera_id == right_camera_id))
+    return fail("invalid camera identity metadata");
   if (std::abs(q.at<double>(3, 2)) < 1e-12)
     return fail("invalid stereo reprojection geometry");
+  const double q_baseline = 1. / std::abs(q.at<double>(3, 2));
+  if (!std::isfinite(q_baseline) ||
+      std::abs(q_baseline - baseline()) > std::max(1e-6, baseline() * 1e-3))
+    return fail("stereo baseline and Q matrix disagree");
   return true;
 }
 StereoCalibration StereoCalibration::load(const std::string& path) {
@@ -119,7 +178,13 @@ StereoCalibration StereoCalibration::load(const std::string& path) {
   f["Q"] >> c.q;
   c.image_size = {static_cast<int>(f["image_width"]), static_cast<int>(f["image_height"])};
   c.rms_error = static_cast<double>(f["rms_error"]);
+  if (!f["left_rms_error"].empty())
+    c.left_rms_error = static_cast<double>(f["left_rms_error"]);
+  if (!f["right_rms_error"].empty())
+    c.right_rms_error = static_cast<double>(f["right_rms_error"]);
   c.provenance = static_cast<std::string>(f["provenance"]);
+  c.left_camera_id = static_cast<std::string>(f["left_camera_id"]);
+  c.right_camera_id = static_cast<std::string>(f["right_camera_id"]);
   std::string reason;
   if (!c.valid(&reason))
     throw std::runtime_error("invalid calibration: " + reason);
@@ -133,8 +198,9 @@ void StereoCalibration::save(const std::string& path) const {
   f << "image_width" << image_size.width << "image_height" << image_size.height << "K_left"
     << k_left << "D_left" << d_left << "K_right" << k_right << "D_right" << d_right << "R"
     << rotation << "T" << translation << "R_left" << r_left << "R_right" << r_right << "P_left"
-    << p_left << "P_right" << p_right << "Q" << q << "rms_error" << rms_error << "provenance"
-    << provenance;
+    << p_left << "P_right" << p_right << "Q" << q << "rms_error" << rms_error
+    << "left_rms_error" << left_rms_error << "right_rms_error" << right_rms_error << "provenance"
+    << provenance << "left_camera_id" << left_camera_id << "right_camera_id" << right_camera_id;
 }
 StereoCalibration calibrate_chessboard(const std::vector<cv::Mat>& left,
                                        const std::vector<cv::Mat>& right, cv::Size pattern,
@@ -179,8 +245,8 @@ StereoCalibration calibrate_chessboard(const std::vector<cv::Mat>& left,
   c.d_left = cv::Mat::zeros(1, 5, CV_64F);
   c.d_right = c.d_left.clone();
   std::vector<cv::Mat> rv, tv;
-  cv::calibrateCamera(objects, lp, size, c.k_left, c.d_left, rv, tv);
-  cv::calibrateCamera(objects, rp, size, c.k_right, c.d_right, rv, tv);
+  c.left_rms_error = cv::calibrateCamera(objects, lp, size, c.k_left, c.d_left, rv, tv);
+  c.right_rms_error = cv::calibrateCamera(objects, rp, size, c.k_right, c.d_right, rv, tv);
   cv::Mat essential, fundamental;
   c.rms_error = cv::stereoCalibrate(objects, lp, rp, c.k_left, c.d_left, c.k_right, c.d_right, size,
                                     c.rotation, c.translation, essential, fundamental,

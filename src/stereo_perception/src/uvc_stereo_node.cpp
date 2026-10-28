@@ -1,4 +1,8 @@
 #include <chrono>
+#include <filesystem>
+#include <atomic>
+#include <mutex>
+#include <thread>
 #include <cv_bridge/cv_bridge.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -13,14 +17,30 @@ class UvcStereoNode final : public rclcpp::Node {
     auto left = declare_parameter("left_device", "/dev/v4l/by-id/LEFT_OV9281_UNCONFIGURED");
     auto right = declare_parameter("right_device", "/dev/v4l/by-id/RIGHT_OV9281_UNCONFIGURED");
     auto file = declare_parameter("calibration_file", "");
+    const auto timestamp_policy = declare_parameter("timestamp_policy", "host_monotonic_receipt_ros_mapped");
+    left_frame_ = declare_parameter("left_frame_id", "left_camera_optical_frame");
+    right_frame_ = declare_parameter("right_frame_id", "right_camera_optical_frame");
     int width = declare_parameter("width", 640), height = declare_parameter("height", 480);
     double fps = declare_parameter("fps", 20.), exposure = declare_parameter("exposure", -1.),
            gain = declare_parameter("gain", -1.);
     auto format = declare_parameter("pixel_format", "");
+    if (left.find("UNCONFIGURED") != std::string::npos ||
+        right.find("UNCONFIGURED") != std::string::npos)
+      throw std::invalid_argument("measured persistent left and right camera paths are required");
+    if (!std::filesystem::exists(left) || !std::filesystem::exists(right))
+      throw std::invalid_argument("one or both configured camera device paths are unavailable");
     if (width < 16 || height < 16 || width > 4096 || height > 4096 || !std::isfinite(fps) ||
-        fps <= 0 || fps > 240 || left == right)
+        fps <= 0 || fps > 240 || left == right ||
+        left_frame_ != "left_camera_optical_frame" ||
+        right_frame_ != "right_camera_optical_frame" ||
+        timestamp_policy != "host_monotonic_receipt_ros_mapped" ||
+        (left.rfind("/dev/v4l/by-id/", 0) != 0 && left.rfind("/dev/v4l/by-path/", 0) != 0) ||
+        (right.rfind("/dev/v4l/by-id/", 0) != 0 && right.rfind("/dev/v4l/by-path/", 0) != 0))
       throw std::invalid_argument("invalid dual-camera configuration");
     auto calibration = ep::StereoCalibration::load(file);
+    if (calibration.left_camera_id.empty() || calibration.left_camera_id != left ||
+        calibration.right_camera_id != right)
+      throw std::invalid_argument("camera device identities do not match measured calibration");
     if (calibration.image_size != cv::Size(width, height))
       throw std::invalid_argument("camera resolution/calibration mismatch");
     int fourcc = 0;
@@ -44,33 +64,56 @@ class UvcStereoNode final : public rclcpp::Node {
     right_pub_ = create_publisher<sensor_msgs::msg::Image>("camera/right/image_raw",
                                                            rclcpp::SensorDataQoS().keep_last(1));
     diag_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("perception/diagnostics", 10);
-    timer_ = create_wall_timer(std::chrono::duration<double>(1. / fps), [this] { tick(); });
+    running_ = true;
+    left_thread_ = std::thread([this] { acquire(true); });
+    right_thread_ = std::thread([this] { acquire(false); });
+    timer_ = create_wall_timer(std::chrono::seconds(1), [this] { tick(); });
+  }
+  ~UvcStereoNode() override {
+    running_ = false;
+    if (left_thread_.joinable()) left_thread_.join();
+    if (right_thread_.joinable()) right_thread_.join();
   }
 
  private:
   void publish(const ep::ImageFrame& f, bool left) {
     // Translate host monotonic reception time into ROS time without labelling it exposure time.
-    const double mono =
-        std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     std_msgs::msg::Header h;
-    h.stamp = now() - rclcpp::Duration::from_seconds(std::max(0., mono - f.receive_time));
-    h.frame_id = left ? "left_camera_optical_frame" : "right_camera_optical_frame";
+    const auto ros_anchor = now();
+    const double monotonic_anchor = std::chrono::duration<double>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    h.stamp = ros_anchor - rclcpp::Duration::from_seconds(std::max(0., monotonic_anchor - f.receive_time));
+    h.frame_id = left ? left_frame_ : right_frame_;
     (left ? left_pub_ : right_pub_)->publish(*cv_bridge::CvImage(h, "mono8", f.image).toImageMsg());
   }
+  void acquire(bool left) {
+    auto& camera = left ? left_cam_ : right_cam_;
+    while (running_) {
+      const auto frame = camera->read();
+      if (frame) publish(*frame, left);
+      {
+        std::lock_guard<std::mutex> lock(stats_mutex_);
+        (left ? left_stats_ : right_stats_) = camera->stats();
+      }
+      if (!frame) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
   void tick() {
-    auto l = left_cam_->read();
-    if (l)
-      publish(*l, true);
-    auto r = right_cam_->read();
-    if (r)
-      publish(*r, false);
+    ep::AcquisitionStats l, r;
+    {
+      std::lock_guard<std::mutex> lock(stats_mutex_);
+      l = left_stats_;
+      r = right_stats_;
+    }
     diagnostic_msgs::msg::DiagnosticArray a;
     a.header.stamp = now();
     diagnostic_msgs::msg::DiagnosticStatus s;
     s.name = "uvc_acquisition";
     s.hardware_id = "configured-dual-uvc";
-    s.level = l && r ? 0 : 2;
-    s.message = l && r ? "frames received" : "camera acquisition failure/disconnect";
+    s.level = l.frames > last_left_frames_ && r.frames > last_right_frames_ ? 0 : 2;
+    s.message = s.level == 0 ? "frames received" : "camera acquisition failure/disconnect";
+    last_left_frames_ = l.frames;
+    last_right_frames_ = r.frames;
     auto add = [&](std::string k, std::string v) {
       diagnostic_msgs::msg::KeyValue x;
       x.key = k;
@@ -79,15 +122,23 @@ class UvcStereoNode final : public rclcpp::Node {
     };
     add("timestamp_provenance",
         "host monotonic receipt mapped to ROS; exposure synchronization unverified");
-    add("left_sequence", std::to_string(left_cam_->stats().frames));
-    add("right_sequence", std::to_string(right_cam_->stats().frames));
+    add("left_sequence", std::to_string(l.frames));
+    add("right_sequence", std::to_string(r.frames));
     add("driver_dropped_frames", "unavailable through OpenCV; receipt-gap estimate only");
     add("estimated_receipt_drops",
-        std::to_string(left_cam_->stats().dropped + right_cam_->stats().dropped));
+        std::to_string(l.dropped + r.dropped));
+    add("reconnects", std::to_string(l.reconnects + r.reconnects));
+    add("read_failures", std::to_string(l.failures + r.failures));
     a.status.push_back(s);
     diag_->publish(a);
   }
   std::unique_ptr<ep::UvcCamera> left_cam_, right_cam_;
+  std::string left_frame_, right_frame_;
+  std::atomic<bool> running_{false};
+  std::thread left_thread_, right_thread_;
+  std::mutex stats_mutex_;
+  ep::AcquisitionStats left_stats_, right_stats_;
+  std::size_t last_left_frames_{}, last_right_frames_{};
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr left_pub_, right_pub_;
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_;
   rclcpp::TimerBase::SharedPtr timer_;

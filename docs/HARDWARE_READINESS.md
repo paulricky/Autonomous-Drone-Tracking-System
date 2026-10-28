@@ -1,5 +1,9 @@
 # Hardware readiness checklist
 
+The implementation and operator procedures are in
+[Phase 5 deployment and bench preparation](PHASE5_DEPLOYMENT.md). The
+read-only MSP probe and physical command gate remain non-actuating.
+
 Phase 4 UVC acquisition supports configured persistent Linux video-device paths,
 with OpenCV/V4L2 host-reception timestamps. No OV9281 cameras or Raspberry Pi 5
 were available for testing. Real stereo calibration, mounting extrinsics, dual
@@ -14,8 +18,9 @@ restrained testing.
 - Preserve the full SD image and recovered source archive read-only; record hashes.
 - Identify the exact Raspberry Pi model, power budget, OS image, Python version,
   ROS distribution, and all catkin/system dependencies.
-- Inventory `/dev/ttyUSB*`, USB adapter identity, permissions/group membership,
-  115200-baud stability, and the exact SP Racing F3 firmware/configuration.
+- Inventory persistent serial-device paths, USB adapter identity,
+  permissions/group membership, candidate 115200-baud stability, and the
+  actual board and firmware configuration.
 - Confirm MSP variant and `MSP_SET_RAW_RC` channel order/ranges against firmware.
 - Back up flight-controller settings; verify port mapping, receiver/failsafe,
   mixer, motor order/direction, ESC condition, and sensor calibration.

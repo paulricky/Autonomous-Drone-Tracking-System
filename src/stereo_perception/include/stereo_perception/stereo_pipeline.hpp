@@ -24,7 +24,7 @@ struct CameraConfig {
   int fourcc{};
 };
 struct AcquisitionStats {
-  std::size_t frames{}, failures{}, dropped{};
+  std::size_t frames{}, failures{}, dropped{}, reconnects{};
 };
 class UvcCamera {
  public:
@@ -50,13 +50,17 @@ class UvcCamera {
   std::vector<std::string> unsupported_;
   std::uint64_t sequence_{};
   double last_receive_{};
+  double next_reconnect_{};
+  bool configure_capture();
 };
 struct StereoCalibration {
   cv::Mat k_left, d_left, k_right, d_right, rotation, translation, r_left, r_right, p_left, p_right,
       q;
   cv::Size image_size;
   double rms_error{};
+  double left_rms_error{}, right_rms_error{};
   std::string provenance;
+  std::string left_camera_id, right_camera_id;
   bool valid(std::string* reason = nullptr) const;
   double baseline() const;
   static StereoCalibration load(const std::string&);

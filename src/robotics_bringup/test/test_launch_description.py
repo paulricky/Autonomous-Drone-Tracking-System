@@ -5,7 +5,9 @@ import unittest
 
 class LaunchDescriptionTest(unittest.TestCase):
     def test_perception_launches_construct(self):
-        for name in ("synthetic_perception", "stereo_localization", "perception_navigation", "uvc_stereo"):
+        for name in ("synthetic_perception", "stereo_localization", "perception_navigation",
+                     "uvc_stereo", "read_only_telemetry", "hardware_diagnostics",
+                     "hardware_integration", "camera_calibration"):
             path = Path(__file__).parents[1] / "launch" / (name + ".launch.py")
             spec = importlib.util.spec_from_file_location(name, path)
             module = importlib.util.module_from_spec(spec)

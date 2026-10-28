@@ -28,7 +28,20 @@ EstimatedState StateEstimator::update(const OdometryResult& o, double stamp) {
   }
   const double dt = stamp - state_.timestamp;
   state_.timestamp = stamp;
-  if (lost_ || !o.valid || dt > .5 || !cv::checkRange(cv::Mat(o.previous_to_current))) {
+  cv::Matx33d rotation;
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      rotation(i, j) = o.previous_to_current(i, j);
+  const bool geometry_valid = cv::checkRange(cv::Mat(o.previous_to_current)) &&
+      cv::norm(rotation * rotation.t() - cv::Matx33d::eye()) <= 1e-3 &&
+      std::abs(cv::determinant(rotation) - 1.) <= 1e-3 &&
+      std::abs(o.previous_to_current(3, 0)) <= 1e-9 &&
+      std::abs(o.previous_to_current(3, 1)) <= 1e-9 &&
+      std::abs(o.previous_to_current(3, 2)) <= 1e-9 &&
+      std::abs(o.previous_to_current(3, 3) - 1.) <= 1e-9;
+  if (lost_ || !o.valid || o.inliers < 20 || !std::isfinite(o.reprojection_error) ||
+      o.reprojection_error < 0 || o.reprojection_error > 1.5 ||
+      dt > .5 || !geometry_valid) {
     lost_ = true;
     state_.quality = LocalizationQuality::lost;
     state_.velocity = {};
@@ -38,10 +51,6 @@ EstimatedState StateEstimator::update(const OdometryResult& o, double stamp) {
   cv::Vec3d v;
   for (int i = 0; i < 3; ++i)
     v[i] = (pose(i, 3) - state_.world_from_camera(i, 3)) / dt;
-  cv::Matx33d rotation;
-  for (int i = 0; i < 3; ++i)
-    for (int j = 0; j < 3; ++j)
-      rotation(i, j) = o.previous_to_current(i, j);
   cv::Vec3d r;
   cv::Rodrigues(rotation, r);
   if (cv::norm(v) > 3.0 || cv::norm(r) / dt > 3.0) {
@@ -53,9 +62,6 @@ EstimatedState StateEstimator::update(const OdometryResult& o, double stamp) {
   state_.velocity = (1 - alpha) * state_.velocity + alpha * v;
   state_.world_from_camera = pose;
   state_.quality = LocalizationQuality::tracking;
-  // Heuristic accumulated uncertainty, not a calibrated probabilistic covariance.
-  for (int i = 0; i < 6; ++i)
-    state_.covariance(i, i) += std::max(1e-7, o.reprojection_error * o.reprojection_error * 1e-6);
   return state_;
 }
 }  // namespace robotics::perception

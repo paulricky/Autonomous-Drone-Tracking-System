@@ -4,5 +4,5 @@ services:
     network_mode: host
     environment:
       ROS_DOMAIN_ID: "42"
-    working_dir: /workspace
-    command: ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && source install/setup.bash && ros2 launch robotics_bringup diagnostics.launch.py"]
+    working_dir: /opt/robotics/workspace
+    command: ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && source /opt/robotics/install/setup.bash && ros2 launch robotics_bringup diagnostics.launch.py"]

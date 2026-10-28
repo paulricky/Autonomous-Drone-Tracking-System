@@ -8,6 +8,7 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/FlightControllerStatus.msg" "msg/PlannerStatus.msg"
   "msg/TrajectoryPoint.msg" "msg/TimedTrajectory.msg" "msg/VehicleState.msg" "msg/ControlCommand.msg"
+  "msg/MspRawTelemetry.msg"
   "action/NavigateToPose.action"
   DEPENDENCIES builtin_interfaces geometry_msgs std_msgs)
 ament_export_dependencies(rosidl_default_runtime)

@@ -41,9 +41,18 @@ static geometry_msgs::msg::Quaternion quaternion(const cv::Matx33d& r) {
 }
 class PerceptionNode final : public rclcpp::Node {
  public:
-  PerceptionNode() : Node("stereo_perception"), sync_(.005, 4) {
+  PerceptionNode() : Node("stereo_perception"), sync_(
+      declare_parameter("max_pair_delta_s", .005), 4) {
     cv::setNumThreads(1);
     mode_ = declare_parameter("mode", "synthetic");
+    expected_left_frame_ = declare_parameter("expected_left_frame_id", "left_camera_optical_frame");
+    expected_right_frame_ = declare_parameter("expected_right_frame_id", "right_camera_optical_frame");
+    if (expected_left_frame_ != "left_camera_optical_frame" ||
+        expected_right_frame_ != "right_camera_optical_frame")
+      throw std::invalid_argument("invalid stereo optical frame identifiers");
+    image_max_age_ = declare_parameter("image_max_age_s", .25);
+    if (!std::isfinite(image_max_age_) || image_max_age_ <= 0 || image_max_age_ > 10)
+      throw std::invalid_argument("invalid image freshness threshold");
     double hz = declare_parameter("frame_rate", 10.0);
     declare_parameter("disconnect_after_frames", -1);
     declare_parameter("low_texture_after_frames", -1);
@@ -58,23 +67,28 @@ class PerceptionNode final : public rclcpp::Node {
     const auto output = declare_parameter("results_directory", "");
     const auto initial_position =
         declare_parameter("initial_body_position", std::vector<double>{0, 0, 1});
-    const auto translation =
-        declare_parameter("body_from_left_optical_translation", std::vector<double>{0, 0, 0});
-    const auto rotation_vector =
-        declare_parameter("body_from_left_optical_rotation_vector", std::vector<double>{0, 0, 0});
-    if (initial_position.size() != 3 || translation.size() != 3 || rotation_vector.size() != 3) {
+    const auto translation = declare_parameter(
+        "body_from_left_optical_translation", std::vector<double>{0, 0, 0});
+    const auto rotation_vector = declare_parameter(
+        "body_from_left_optical_rotation_vector", std::vector<double>{0, 0, 0});
+    const bool mounting_verified = declare_parameter("mounting_verified", false);
+    if (mode_ == "external" && !mounting_verified)
+      throw std::invalid_argument("measured camera mounting required: set translation, rotation and mounting_verified");
+    const auto mount_translation = translation.empty() ? std::vector<double>{0, 0, 0} : translation;
+    const auto mount_rotation = rotation_vector.empty() ? std::vector<double>{0, 0, 0} : rotation_vector;
+    if (initial_position.size() != 3 || mount_translation.size() != 3 || mount_rotation.size() != 3) {
       throw std::invalid_argument("pose parameters must have three SI values");
     }
-    for (const auto& values : {initial_position, translation, rotation_vector}) {
+    for (const auto& values : {initial_position, mount_translation, mount_rotation}) {
       for (double value : values) {
         if (!std::isfinite(value))
           throw std::invalid_argument("non-finite camera/body configuration");
       }
     }
     // Rotation vector is the mounting offset relative to the optical-to-FLU convention.
-    body_from_raw_camera_ = ep::camera_pose({translation[0], translation[1], translation[2]});
+    body_from_raw_camera_ = ep::camera_pose({mount_translation[0], mount_translation[1], mount_translation[2]});
     cv::Matx33d mounting_rotation;
-    cv::Rodrigues(cv::Vec3d(rotation_vector[0], rotation_vector[1], rotation_vector[2]),
+    cv::Rodrigues(cv::Vec3d(mount_rotation[0], mount_rotation[1], mount_rotation[2]),
                   mounting_rotation);
     cv::Matx44d mount = cv::Matx44d::eye();
     for (int i = 0; i < 3; ++i)
@@ -83,7 +97,7 @@ class PerceptionNode final : public rclcpp::Node {
     body_from_raw_camera_ = mount * body_from_raw_camera_;
     // Translation is specified in body coordinates, independent of mounting rotation.
     for (int i = 0; i < 3; ++i) {
-      body_from_raw_camera_(i, 3) = translation[i];
+      body_from_raw_camera_(i, 3) = mount_translation[i];
     }
     if (!std::isfinite(hz) || hz <= 0 || hz > 100)
       throw std::invalid_argument("invalid frame rate");
@@ -168,8 +182,12 @@ class PerceptionNode final : public rclcpp::Node {
 
  private:
   void receive(const sensor_msgs::msg::Image::SharedPtr& m, bool left) {
+    if (m->header.frame_id != (left ? expected_left_frame_ : expected_right_frame_)) {
+      diagnostic(2, "camera frame id mismatch");
+      return;
+    }
     double stamp = rclcpp::Time(m->header.stamp).seconds();
-    if (now().seconds() - stamp > .25 || stamp > now().seconds() + .01) {
+    if (now().seconds() - stamp > image_max_age_ || stamp > now().seconds() + .01) {
       diagnostic(2, "stale or future image");
       return;
     }
@@ -189,7 +207,7 @@ class PerceptionNode final : public rclcpp::Node {
       sync_.push_right({seq, stamp});
     while (buffer.size() > 4)
       buffer.erase(buffer.begin());
-    auto pair = sync_.pop_pair(now().seconds(), .25);
+    auto pair = sync_.pop_pair(now().seconds(), image_max_age_);
     if (!pair)
       return;
     auto l = left_buffer_.find(pair->left.sequence), r = right_buffer_.find(pair->right.sequence);
@@ -206,7 +224,7 @@ class PerceptionNode final : public rclcpp::Node {
   }
   void tick() {
     if (mode_ == "external") {
-      if (now().seconds() - last_received_ > .5)
+      if (now().seconds() - last_received_ > 2 * image_max_age_)
         diagnostic(2, "camera image timeout");
       return;
     }
@@ -282,6 +300,8 @@ class PerceptionNode final : public rclcpp::Node {
     auto begin = Clock::now();
     auto d = pipeline_->process(left, right);
     auto result = vo_->update(d.rectified_left, d.depth, time);
+    last_vo_inliers_ = result.inliers;
+    last_vo_reprojection_error_ = result.reprojection_error;
     auto estimation_begin = Clock::now();
     auto state = estimator_.update(result, time);
     double estimator_ms = ms(estimation_begin);
@@ -411,8 +431,9 @@ class PerceptionNode final : public rclcpp::Node {
     o.twist.twist.linear.x = local_velocity[0];
     o.twist.twist.linear.y = local_velocity[1];
     o.twist.twist.linear.z = local_velocity[2];
-    for (int i = 0; i < 6; ++i)
-      o.pose.covariance[7 * i] = s.covariance(i, i);
+    // No measured VO noise model exists yet; ROS convention marks covariance unknown.
+    o.pose.covariance[0] = -1;
+    o.twist.covariance[0] = -1;
     odom_->publish(o);
     geometry_msgs::msg::TransformStamped t;
     t.header = m.header;
@@ -479,10 +500,19 @@ class PerceptionNode final : public rclcpp::Node {
     v.key = "rejected_pairs";
     v.value = std::to_string(sync_.stats().rejected);
     s.values.push_back(v);
+    v.key = "vo_inliers";
+    v.value = std::to_string(last_vo_inliers_);
+    s.values.push_back(v);
+    v.key = "vo_reprojection_rms_pixels";
+    v.value = std::to_string(last_vo_reprojection_error_);
+    s.values.push_back(v);
+    v.key = "pose_covariance";
+    v.value = "unmeasured";
+    s.values.push_back(v);
     a.status.push_back(s);
     diagnostics_->publish(a);
   }
-  std::string mode_, output_;
+  std::string mode_, output_, expected_left_frame_, expected_right_frame_;
   std::unique_ptr<ep::SyntheticStereo> synthetic_;
   std::unique_ptr<ep::StereoPipeline> pipeline_;
   std::unique_ptr<ep::StereoVisualOdometry> vo_;
@@ -491,8 +521,11 @@ class PerceptionNode final : public rclcpp::Node {
   std::map<std::uint64_t, std::pair<cv::Mat, double>> left_buffer_, right_buffer_;
   std::uint64_t sequence_{};
   std::size_t frames_{};
+  int last_vo_inliers_{};
+  double last_vo_reprojection_error_{};
   bool saved_{};
   double start_{}, last_received_{}, last_recorded_stamp_{};
+  double image_max_age_{};
   double pending_recorded_stamp_{}, recorded_epoch_{}, replay_epoch_{};
   bool recorded_pending_{}, recorded_initialized_{};
   std::filesystem::path recorded_root_;

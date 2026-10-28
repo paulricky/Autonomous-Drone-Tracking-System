@@ -6,7 +6,6 @@ enum class LocalizationQuality { initializing, tracking, lost };
 struct EstimatedState {
   cv::Matx44d world_from_camera{cv::Matx44d::eye()};
   cv::Vec3d velocity{};
-  cv::Matx<double, 6, 6> covariance{cv::Matx<double, 6, 6>::eye() * .001};
   double timestamp{};
   LocalizationQuality quality{LocalizationQuality::initializing};
   bool usable(double now, double max_age = .5) const;

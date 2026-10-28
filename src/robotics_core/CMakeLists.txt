@@ -15,18 +15,24 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 add_library(${PROJECT_NAME}
-  src/msp.cpp src/trajectory_tracker.cpp src/voxel_map.cpp
+  src/msp.cpp src/msp_serial.cpp src/command_gate.cpp src/trajectory_tracker.cpp src/voxel_map.cpp
   src/kinodynamic_astar.cpp src/bspline.cpp src/ego_optimizer.cpp src/dynamics.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 add_executable(hardware_monitor_node src/hardware_monitor_node.cpp)
+add_executable(msp_telemetry_node src/msp_telemetry_node.cpp)
+target_link_libraries(msp_telemetry_node ${PROJECT_NAME})
+add_executable(physical_command_gate_node src/physical_command_gate_node.cpp)
+target_link_libraries(physical_command_gate_node ${PROJECT_NAME})
 target_link_libraries(hardware_monitor_node ${PROJECT_NAME})
 add_executable(autonomy_sim_node src/autonomy_sim_node.cpp)
 target_link_libraries(autonomy_sim_node ${PROJECT_NAME})
 ament_target_dependencies(autonomy_sim_node rclcpp rclcpp_action flight_interfaces std_msgs sensor_msgs tf2_ros)
 ament_target_dependencies(hardware_monitor_node rclcpp rclcpp_lifecycle diagnostic_msgs flight_interfaces)
-install(TARGETS ${PROJECT_NAME} hardware_monitor_node autonomy_sim_node EXPORT ${PROJECT_NAME}Targets
+ament_target_dependencies(msp_telemetry_node rclcpp diagnostic_msgs flight_interfaces)
+ament_target_dependencies(physical_command_gate_node rclcpp diagnostic_msgs flight_interfaces)
+install(TARGETS ${PROJECT_NAME} hardware_monitor_node msp_telemetry_node physical_command_gate_node autonomy_sim_node EXPORT ${PROJECT_NAME}Targets
   ARCHIVE DESTINATION lib LIBRARY DESTINATION lib RUNTIME DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
@@ -34,6 +40,10 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_msp test/test_msp.cpp)
   target_link_libraries(test_msp ${PROJECT_NAME})
+  ament_add_gtest(test_msp_serial test/test_msp_serial.cpp)
+  target_link_libraries(test_msp_serial ${PROJECT_NAME})
+  ament_add_gtest(test_command_gate test/test_command_gate.cpp)
+  target_link_libraries(test_command_gate ${PROJECT_NAME})
   ament_add_gtest(test_trajectory_tracker test/test_trajectory_tracker.cpp)
   target_link_libraries(test_trajectory_tracker ${PROJECT_NAME})
   ament_add_gtest(test_navigation test/test_navigation.cpp)

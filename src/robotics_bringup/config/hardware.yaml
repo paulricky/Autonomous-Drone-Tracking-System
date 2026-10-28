@@ -1,0 +1,53 @@
+# Copy to persistent deployment config and replace every UNCONFIGURED value using measurements.
+uvc_stereo:
+  ros__parameters:
+    left_device: /dev/v4l/by-id/LEFT_OV9281_UNCONFIGURED
+    right_device: /dev/v4l/by-id/RIGHT_OV9281_UNCONFIGURED
+    calibration_file: /var/lib/robotics/calibration/stereo_UNCONFIGURED.yaml
+    width: 640
+    height: 480
+    fps: 20.0
+    timestamp_policy: host_monotonic_receipt_ros_mapped
+    left_frame_id: left_camera_optical_frame
+    right_frame_id: right_camera_optical_frame
+    pixel_format: ""
+    exposure: -1.0
+    gain: -1.0
+stereo_perception:
+  ros__parameters:
+    mode: external
+    calibration_file: /var/lib/robotics/calibration/stereo_UNCONFIGURED.yaml
+    max_pair_delta_s: 0.005  # provisional software tolerance; measure and revise
+    image_max_age_s: 0.25
+    expected_left_frame_id: left_camera_optical_frame
+    expected_right_frame_id: right_camera_optical_frame
+    body_from_left_optical_translation: [0.0, 0.0, 0.0]  # placeholder, unverified
+    body_from_left_optical_rotation_vector: [0.0, 0.0, 0.0]  # placeholder, unverified
+    mounting_verified: false  # set true only after measured transform entered
+    initial_body_position: [0.0, 0.0, 0.0]  # relative VO origin only
+msp_telemetry:
+  ros__parameters:
+    transport_enabled: false
+    hardware_output_enabled: false
+    serial_device: /dev/serial/by-id/CONTROLLER_UNCONFIGURED
+    baud_rate: 115200
+    protocol: unverified
+    timestamp_policy: ros_poll_completion
+autonomy_pipeline:
+  ros__parameters:
+    system_mode: hardware_read_only
+    simulate_vehicle: false
+    auto_start: false
+    state_topic: perception/state_estimate
+    use_perception_map: true
+    unknown_is_free: false
+    hardware_output_enabled: false
+physical_command_gate:
+  ros__parameters:
+    hardware_output_enabled: false
+    operator_authorized: false
+    emergency_stop: true
+    command_age_s: 0.15
+    acceleration_max_mps2: 2.0  # software command bound; physical mapping unverified
+    telemetry_age_s: 0.25
+    estimate_age_s: 0.25

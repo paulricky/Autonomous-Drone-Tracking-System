@@ -21,6 +21,7 @@
 #include "flight_interfaces/msg/timed_trajectory.hpp"
 #include "flight_interfaces/msg/vehicle_state.hpp"
 #include "robotics_core/bspline.hpp"
+#include "robotics_core/command_gate.hpp"
 #include "robotics_core/dynamics.hpp"
 #include "robotics_core/ego_optimizer.hpp"
 #include "robotics_core/kinodynamic_astar.hpp"
@@ -63,23 +64,19 @@ class SimulatorNode final : public rclcpp::Node {
  private:
   void accept_command(const flight_interfaces::msg::ControlCommand& m) {
     const auto stamp = rclcpp::Time(m.header.stamp);
-    const auto age = (now() - stamp).seconds();
     const auto acceleration = vec(m.acceleration);
-    if (m.header.frame_id != "map" || stamp.nanoseconds() <= 0 || age < -.05 || age > .15 ||
-        !nav::finite(acceleration) || nav::norm(acceleration) > 2.0 + 1e-6 ||
-        (!m.braking && m.trajectory_id == 0)) {
+    robotics::control::CommandSample sample{stamp.seconds(), m.trajectory_id,
+                                            acceleration, m.braking, m.header.frame_id};
+    std::lock_guard<std::mutex> l(mu_);
+    if (!gate_.check_common(sample, now().seconds()).empty()) {
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
                            "rejected invalid or stale simulated control command");
       return;
     }
-    std::lock_guard<std::mutex> l(mu_);
-    if (stamp <= last_accepted_stamp_ || (!m.braking && m.trajectory_id < last_trajectory_id_))
-      return;
+    gate_.commit(sample);
     acceleration_ = acceleration;
     braking_ = m.braking;
     last_command_ = now();
-    last_accepted_stamp_ = stamp;
-    last_trajectory_id_ = std::max(last_trajectory_id_, m.trajectory_id);
   }
   void tick() {
     nav::Vec3 a{};
@@ -113,10 +110,9 @@ class SimulatorNode final : public rclcpp::Node {
   nav::DoubleIntegrator sim_;
   nav::Vec3 acceleration_{};
   bool braking_{};
+  robotics::control::CommandGate gate_;
   std::mutex mu_;
   rclcpp::Time last_command_{0, 0, RCL_ROS_TIME};
-  rclcpp::Time last_accepted_stamp_{0, 0, RCL_ROS_TIME};
-  std::uint64_t last_trajectory_id_{};
   rclcpp::Subscription<flight_interfaces::msg::ControlCommand>::SharedPtr command_;
   rclcpp::Publisher<flight_interfaces::msg::VehicleState>::SharedPtr truth_, estimate_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -154,8 +150,16 @@ class AutonomyNode final : public rclcpp::Node {
     tracker_ = robotics::control::TrajectoryTracker(
         {4, 2.8, 2, 2, get_parameter("state_timeout").as_double()});
     declare_parameter("hardware_output_enabled", false);
+    declare_parameter("simulate_vehicle", true);
+    declare_parameter("system_mode", "simulation");
     if (get_parameter("hardware_output_enabled").as_bool())
-      throw std::runtime_error("physical hardware output is forbidden in simulation");
+      throw std::runtime_error("physical hardware output is unavailable in this build");
+    const auto system_mode = get_parameter("system_mode").as_string();
+    if (system_mode != "simulation" && system_mode != "hardware_read_only")
+      throw std::invalid_argument("unsupported system mode");
+    if (system_mode == "hardware_read_only" &&
+        (get_parameter("simulate_vehicle").as_bool() || get_parameter("auto_start").as_bool()))
+      throw std::invalid_argument("hardware read-only mode forbids simulator and automatic goals");
     scenario_ = get_parameter("scenario").as_string();
     use_perception_map_ = get_parameter("use_perception_map").as_bool();
     goal_ = {get_parameter("goal_x").as_double(), get_parameter("goal_y").as_double(),
@@ -746,9 +750,12 @@ class AutonomyNode final : public rclcpp::Node {
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto exec = std::make_shared<rclcpp::executors::MultiThreadedExecutor>();
-  auto simulator = std::make_shared<SimulatorNode>();
   auto autonomy = std::make_shared<AutonomyNode>();
-  exec->add_node(simulator);
+  std::shared_ptr<SimulatorNode> simulator;
+  if (autonomy->get_parameter("simulate_vehicle").as_bool()) {
+    simulator = std::make_shared<SimulatorNode>();
+    exec->add_node(simulator);
+  }
   exec->add_node(autonomy);
   exec->spin();
   rclcpp::shutdown();

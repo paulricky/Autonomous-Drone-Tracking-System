@@ -3,6 +3,27 @@
 #include <stdexcept>
 
 namespace robotics::msp {
+namespace {
+std::uint16_t u16(const std::vector<std::uint8_t>& p, std::size_t at) {
+  return std::uint16_t(p[at]) | (std::uint16_t(p[at + 1]) << 8);
+}
+std::uint32_t u32(const std::vector<std::uint8_t>& p, std::size_t at) {
+  return std::uint32_t(u16(p, at)) | (std::uint32_t(u16(p, at + 2)) << 16);
+}
+}
+std::optional<Ident> decode_ident(const Packet& p) {
+  if (p.error || p.command != kIdent || p.payload.size() != 7) return std::nullopt;
+  return Ident{p.payload[0], p.payload[1], p.payload[2], u32(p.payload, 3)};
+}
+std::optional<Status> decode_status(const Packet& p) {
+  if (p.error || p.command != kStatus || p.payload.size() != 11) return std::nullopt;
+  return Status{u16(p.payload, 0), u16(p.payload, 2), u16(p.payload, 4),
+                u32(p.payload, 6), p.payload[10]};
+}
+std::optional<Analog> decode_analog(const Packet& p) {
+  if (p.error || p.command != kAnalog || p.payload.size() != 7) return std::nullopt;
+  return Analog{p.payload[0], u16(p.payload, 1), u16(p.payload, 3), u16(p.payload, 5)};
+}
 std::vector<std::uint8_t> encode(const std::uint8_t command,
                                  const std::vector<std::uint8_t>& payload) {
   if (payload.size() > 255)
@@ -32,6 +53,7 @@ std::vector<std::uint8_t> encode_raw_rc(const std::array<std::uint16_t, 4>& chan
 void Parser::reset() noexcept {
   state_ = State::kDollar;
   length_ = checksum_ = 0;
+  error_ = false;
   packet_ = {};
 }
 std::optional<Packet> Parser::push(const std::uint8_t byte) {
@@ -44,7 +66,8 @@ std::optional<Packet> Parser::push(const std::uint8_t byte) {
       state_ = byte == 'M' ? State::kDirection : State::kDollar;
       break;
     case State::kDirection:
-      state_ = (byte == '>' || byte == '!') ? State::kLength : State::kDollar;
+      error_ = byte == '!';
+      state_ = (byte == '>' || error_) ? State::kLength : State::kDollar;
       break;
     case State::kLength:
       length_ = byte;
@@ -66,6 +89,7 @@ std::optional<Packet> Parser::push(const std::uint8_t byte) {
     case State::kChecksum:
       if (byte == checksum_) {
         auto complete = packet_;
+        complete.error = error_;
         reset();
         return complete;
       }

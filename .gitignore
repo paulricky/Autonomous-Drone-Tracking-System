@@ -16,6 +16,7 @@ env/
 *.img
 *.tar.gz
 logs/*.csv
+deployment_data/
 benchmark_results/*
 !benchmark_results/.gitkeep
 calibration_data/**/*.npz

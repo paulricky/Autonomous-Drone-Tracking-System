@@ -1,11 +1,12 @@
 # Autonomous Drone Navigation: Quadcopter Motion Planning and Duckiedrone Integration
 
 This repository is one ROS 2 Jazzy workspace for autonomous Duckiedrone
-navigation. Performance- and timing-sensitive code is migrating behind C++17
+navigation. Performance- and timing-sensitive code runs in native C++17
 libraries; Python remains responsible for mission coordination, experiments,
 analysis, and the existing deterministic regression simulations. Physical
 hardware output, arming, takeoff, and motor commands are disabled and absent by
-default.
+default. [Phase 5 deployment procedures](docs/PHASE5_DEPLOYMENT.md) cover the
+Pi 5 image, physical stereo calibration, read-only telemetry, and diagnostics.
 
 The native simulation launch connects C++ stereo acquisition/synchronization, OpenCV
 rectification/SGBM/depth, metric clouds, voxel ray integration, stereo PnP
@@ -17,7 +18,7 @@ geometric planner, voxel arrays, and waypoint/MuJoCo runners support offline
 simulation and visualization; ROS navigation nodes do not import them.
 
 ```bash
-# Inside the existing Jazzy container, with this repository mounted at /workspace:
+# Inside the development container:
 source /opt/ros/jazzy/setup.bash
 colcon build --base-paths src --packages-up-to robotics_bringup --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
@@ -25,8 +26,8 @@ ros2 launch robotics_bringup perception_navigation.launch.py
 ```
 
 See [native stereo implementation](docs/STEREO_PERCEPTION.md) for camera,
-recorded-input, frame, and launch details. Comprehensive validation and Pi 5
-performance characterization are reserved for Phase 5. Physical flight remains disabled.
+recorded-input, frame, and launch details. Pi 5 physical validation remains
+separate from the software build. Physical flight remains disabled.
 
 Phase 3 adds a reusable native stack in `robotics_core`: 6-D double-integrator
 Kinodynamic A*, clamped B-splines with analytical derivatives, an ESDF-free
@@ -36,7 +37,7 @@ double-integrator dynamics. Run the hardware-inert system with:
 ```bash
 docker compose build
 docker compose run --rm robotics_stack bash -lc \
-  'source /opt/ros/jazzy/setup.bash && source /workspace/install/setup.bash && \
+  'source /opt/ros/jazzy/setup.bash && source /opt/robotics/install/setup.bash && \
    ros2 launch robotics_bringup autonomy_sim.launch.py scenario:=static'
 ```
 

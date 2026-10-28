@@ -54,7 +54,7 @@ class HardwareMonitor final : public rclcpp_lifecycle::LifecycleNode {
     array.header.stamp = now();
     diagnostic_msgs::msg::DiagnosticStatus status;
     status.name = "robotics_core/hardware_output";
-    status.hardware_id = "sp-racing-f3-unconnected";
+    status.hardware_id = "flight-controller-unverified";
     status.level = diagnostic_msgs::msg::DiagnosticStatus::STALE;
     status.message = "hardware disabled by default; no serial device opened";
     diagnostic_msgs::msg::KeyValue gate;

@@ -27,3 +27,25 @@ TEST(Msp, ParsesResponseAndRejectsBadChecksum) {
 TEST(Msp, RejectsUnsafeChannels) {
   EXPECT_THROW(robotics::msp::encode_raw_rc({1500, 1500, 1500, 2200}), std::invalid_argument);
 }
+TEST(Msp, DecodesReadOnlyLegacyFieldsAndRejectsErrors) {
+  robotics::msp::Parser parser;
+  auto bytes = robotics::msp::encode(robotics::msp::kIdent, {1, 2, 3, 4, 5, 6, 7});
+  bytes[2] = '>';
+  std::optional<robotics::msp::Packet> packet;
+  for (auto byte : bytes)
+    if (auto item = parser.push(byte)) packet = item;
+  ASSERT_TRUE(packet);
+  auto ident = robotics::msp::decode_ident(*packet);
+  ASSERT_TRUE(ident);
+  EXPECT_EQ(ident->capability, 0x07060504u);
+  bytes[2] = '!';
+  for (auto byte : bytes)
+    if (auto item = parser.push(byte)) packet = item;
+  ASSERT_TRUE(packet->error);
+  EXPECT_FALSE(robotics::msp::decode_ident(*packet));
+  bytes[2] = '<';
+  packet.reset();
+  for (auto byte : bytes)
+    if (auto item = parser.push(byte)) packet = item;
+  EXPECT_FALSE(packet);
+}

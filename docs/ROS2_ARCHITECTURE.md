@@ -11,10 +11,10 @@ path.
 | Package | Language | Responsibility |
 |---|---|---|
 | `flight_interfaces` | IDL | Navigation action and planner/hardware status |
-| `robotics_core` | C++17 | Native planners, B-splines, tracking, dynamics, voxel mapping, inert hardware diagnostics |
+| `robotics_core` | C++17 | Native planners, B-splines, tracking, dynamics, voxel mapping, read-only MSP transport and command gating |
 | `stereo_perception` | C++17 | UVC/synthetic/recorded stereo, rectification, depth/clouds, PnP odometry and state estimation |
 | `flight_mission` | Python | Low-rate mission state and cancellation/failure policy |
-| `robotics_bringup` | Python launch | Installed parameters and hardware-disabled launch |
+| `robotics_bringup` | Python launch | Installed simulation and read-only hardware configuration |
 | `robotics_tools` | Python | Offline geometry, hand-goal tooling, and legacy simulation helpers |
 
 The standalone Python kinodynamic planner, EGO-inspired optimizer, B-spline,
@@ -30,18 +30,20 @@ All active metric interfaces use SI units. In the stereo odometry baseline,
 `map` and `odom` coincide; no global drift correction is implemented. `base_link` is FLU
 (x forward, y left, z up). Camera optical frames use REP 103 optical axes (x
 right, y down, z forward). Physical `base_link` to camera and IMU transforms
-are intentionally absent until measured. A missing critical transform keeps
-the hardware command gate closed.
+are required configuration for physical operation. A missing camera mounting
+transform prevents external perception startup. IMU axes and scale remain
+unverified, so raw controller counts do not enter the estimator.
 
 ## Interfaces
 
 | Name | Type | Owner | Rate / QoS | Validity |
 |---|---|---|---|---|
-| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | hardware monitor and perception | 1 Hz, reliable | `STALE` while disconnected |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | hardware monitor, MSP telemetry, and physical gate | 1 Hz, reliable | closed or stale until verified |
 | `mission/status` | `std_msgs/String` | autonomy pipeline | on state change, reliable | informational only |
 | `navigate_to_pose` | `flight_interfaces/action/NavigateToPose` | autonomy pipeline | on demand | stamped `map` goal, cancellable |
 | `planning/status` | `flight_interfaces/msg/PlannerStatus` | autonomy pipeline | per plan | measured latency, explicit state |
-| `flight_controller/status` | `flight_interfaces/msg/FlightControllerStatus` | hardware monitor | 1 Hz | explicitly disconnected, command gate closed |
+| `flight_controller/status` | `flight_interfaces/msg/FlightControllerStatus` | hardware monitor or read-only MSP node, in separate launches | 1 Hz | command gate always closed |
+| `flight_controller/raw_telemetry` | `flight_interfaces/msg/MspRawTelemetry` | read-only MSP node | 1 Hz | raw counts; availability flags per query |
 | `planning/trajectory` | `flight_interfaces/msg/TimedTrajectory` | autonomy pipeline | on plan, transient local and reliable | absolute start stamp, SI samples |
 
 Streaming imagery/clouds/odometry use `sensor_msgs` and `nav_msgs`. The existing
@@ -52,19 +54,23 @@ native perception, mapping or localization stage in this launch.
 
 ## Safety ownership
 
-The SP Racing F3 retains low-level stabilization. Linux may eventually send
-only a verified Cleanflight/MSP reference mode. The current lifecycle monitor
-does not open a serial device and refuses configuration when
-`hardware_output_enabled` is true. Arming, takeoff, motor tests, and physical
-command publication are not implemented. Simulation and tests cannot access a
-serial transport.
+The actual controller firmware, modes, RC mapping, and failsafe behavior still
+require physical inspection. The read-only serial node sends only allowlisted
+MSP v1 telemetry queries after explicit configuration. The common command gate
+checks freshness, frame, range, replay, and physical health; the physical node
+reports a closed gate and has no actuator transport. Arming, takeoff, motor
+tests, and physical command publication are not implemented. Serial transport
+software tests use virtual ports only.
 
 ## Launch
 
-`ros2 launch robotics_bringup diagnostics.launch.py` starts only the inert
-hardware monitor and mission status node. Lifecycle activation is deliberate,
-not automatic. Future full-system launch descriptions must retain the same
-false-by-default hardware parameter.
+`diagnostics.launch.py` starts the inert hardware monitor and mission status
+node. `uvc_stereo.launch.py` starts physical cameras and the existing stereo
+estimator. `read_only_telemetry.launch.py` starts only the MSP probe.
+`hardware_integration.launch.py` starts camera perception, telemetry, and
+autonomy with `simulate_vehicle=false` and `auto_start=false`; it also reports
+the closed physical command gate. It submits no navigation goal. See
+[Phase 5 deployment](PHASE5_DEPLOYMENT.md) for required measured configuration.
 # Native navigation simulation
 
 `autonomy_sim.launch.py` starts the inert hardware monitor and two C++ ROS

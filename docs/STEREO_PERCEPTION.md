@@ -22,7 +22,7 @@ ros2 launch robotics_bringup perception_navigation.launch.py
 ros2 launch robotics_bringup perception_navigation.launch.py dynamic_after_s:=3.0
 ros2 launch robotics_bringup perception_navigation.launch.py disconnect_after_frames:=30
 ros2 launch robotics_bringup perception_navigation.launch.py low_texture_after_frames:=30
-ros2 launch robotics_bringup uvc_stereo.launch.py left_device:=/dev/v4l/by-id/LEFT right_device:=/dev/v4l/by-id/RIGHT calibration_file:=/path/stereo.yaml
+ros2 launch robotics_bringup uvc_stereo.launch.py config:=/path/to/measured_hardware.yaml
 ```
 
 Standalone perception/localization nodes run until stopped. Mission launches
@@ -49,12 +49,12 @@ capture intervals and translates the sequence epoch into ROS time.
 
 ## Calibration and geometry
 
-`ros2 run stereo_perception calibrate_stereo 'left/*.png' 'right/*.png' 7 5 0.04 stereo.yaml`
+`ros2 run stereo_perception calibrate_stereo 'left/*.png' 'right/*.png' 7 5 0.04 stereo.yaml LEFT_CAMERA_ID RIGHT_CAMERA_ID`
 uses sorted paired images, checkerboard internal-corner counts and measured square
 size in metres. The CLI requires eight usable pairs and RMS <= 1 pixel. Capture
 diverse positions, distances and tilts; a low reprojection error alone does not
 prove physical coverage or accuracy. YAML stores K/D/R/T, rectification rotations,
-projection matrices, Q, resolution and provenance. Runtime rejects malformed
+projection matrices, Q, resolution, camera identity and provenance. Runtime rejects malformed
 calibration and image-resolution mismatch. Synthetic calibration is explicitly
 synthetic, never presented as measured OV9281 calibration.
 
@@ -69,8 +69,9 @@ correction**. The tree includes base_link, left/right_camera_link, optical and
 rectified frames. Camera mounting is configurable with
 `body_from_left_optical_translation` (metres) and
 `body_from_left_optical_rotation_vector` (radians relative to optical-to-FLU).
-`initial_body_position` fixes the initial coordinate origin. Defaults describe
-the synthetic rig, not measured physical mounting. Rectification and calibrated
+`initial_body_position` fixes the initial coordinate origin. External mode
+requires measured mounting parameters; the origin is local VO, not surveyed.
+Rectification and calibrated
 right-camera transforms are included. Mapping obtains the sensor origin from TF
 at the cloud timestamp, not from an assumed body-center origin.
 
@@ -80,8 +81,8 @@ Native VO detects Shi–Tomasi features, tracks forward/backward with LK, recons
 previous-frame metric points from stereo depth, estimates motion using PnP RANSAC,
 refines inliers with LM, and propagates pose. The native estimator checks timestamps,
 motion jumps and tracking validity, smooths differentiated velocity, and publishes
-orientation through Odometry. Covariance is an explicitly heuristic accumulated
-uncertainty, not a calibrated posterior. This is stereo odometry, without IMU,
+orientation through Odometry. Covariance is marked unknown until a calibrated
+noise model exists. This is stereo odometry, without IMU,
 loop closure, global relocalization or SLAM. Tracking loss latches invalid until
 explicit reinitialization; there is no ground-truth fallback.
 

@@ -51,12 +51,27 @@ TEST(StateEstimator, StaleJumpAndReset) {
   e.reset(camera_pose({0, 0, 1}));
   EXPECT_EQ(e.state().quality, LocalizationQuality::initializing);
 }
+TEST(StateEstimator, RejectsInvalidGeometryBeforePoseUpdate) {
+  StateEstimator e;
+  OdometryResult r;
+  e.update(r, 1.0);
+  r.valid = true;
+  r.inliers = 100;
+  r.previous_to_current(0, 0) = 2.0;
+  const auto before = e.state().world_from_camera;
+  const auto state = e.update(r, 1.1);
+  EXPECT_FALSE(state.usable(1.1));
+  EXPECT_LT(cv::norm(state.world_from_camera - before), 1e-12);
+}
 TEST(StereoCalibration, RejectsMalformedMatricesWithoutOpenCvAssertion) {
   auto c = SyntheticStereo().calibration();
   c.r_left.release();
   EXPECT_FALSE(c.valid());
   c = SyntheticStereo().calibration();
   c.k_left.convertTo(c.k_left, CV_32F);
+  EXPECT_FALSE(c.valid());
+  c = SyntheticStereo().calibration();
+  c.d_left = cv::Mat::zeros(1, 8, CV_64F);
   EXPECT_FALSE(c.valid());
 }
 TEST(VisualOdometry, RotationAndDepthValidity) {
@@ -132,8 +147,20 @@ TEST(StereoCalibration, RoundTripAndRejectsInvalid) {
   auto loaded = StereoCalibration::load(path);
   EXPECT_NEAR(loaded.baseline(), .1, 1e-12);
   EXPECT_EQ(loaded.image_size, cv::Size(320, 240));
+  c.left_camera_id = "/dev/v4l/by-path/left";
+  c.right_camera_id = "/dev/v4l/by-path/right";
+  c.save(path);
+  loaded = StereoCalibration::load(path);
+  EXPECT_EQ(loaded.left_camera_id, c.left_camera_id);
+  EXPECT_EQ(loaded.right_camera_id, c.right_camera_id);
+  c.right_camera_id = c.left_camera_id;
+  EXPECT_FALSE(c.valid());
+  c.right_camera_id = "/dev/v4l/by-path/right";
   std::remove(path);
   c.translation = cv::Mat::zeros(3, 1, CV_64F);
+  EXPECT_FALSE(c.valid());
+  c = synthetic.calibration();
+  c.q.at<double>(3, 2) *= 2.;
   EXPECT_FALSE(c.valid());
 }
 TEST(StereoPipeline, SyntheticDepthAndCloud) {
