@@ -97,6 +97,8 @@ class MspTelemetryNode final : public rclcpp::Node {
           }
         }
         if (ident) missed_ident_ = 0;
+        if (!serial_->connected())
+          detail = "serial disconnected during poll; reconnect pending";
       }
     }
     // This aggregate is stamped at host poll completion, never as controller

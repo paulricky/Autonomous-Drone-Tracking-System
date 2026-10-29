@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")/.."
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+cd "$script_dir/.."
 image="${ROBOTICS_IMAGE:-robotics-jazzy:local}"
 container="${ROBOTICS_CONTAINER:-robotics-stack}"
 data="${ROBOTICS_DATA_DIR:-$PWD/deployment_data}"
+fail() { echo "deployment: $*" >&2; exit 2; }
+require_camera() {
+  [[ "$1" == /dev/v4l/by-id/* || "$1" == /dev/v4l/by-path/* ]] ||
+    fail "camera requires a persistent /dev/v4l/by-id or by-path identity: $1"
+  [[ -e "$1" ]] || fail "camera device unavailable: $1"
+}
 prepare_data() {
   mkdir -p "$data/calibration" "$data/logs" "$data/config"
   data="$(cd "$data" && pwd)"
@@ -39,18 +46,19 @@ run_hardware() {
   if [[ "$launch" == "uvc_stereo.launch.py" || "$launch" == "hardware_integration.launch.py" || "$launch" == "sensor_diagnostics.launch.py" ]]; then
     : "${LEFT_CAMERA_DEVICE:?set LEFT_CAMERA_DEVICE to a persistent /dev/v4l/by-id or by-path entry}"
     : "${RIGHT_CAMERA_DEVICE:?set RIGHT_CAMERA_DEVICE to a persistent /dev/v4l/by-id or by-path entry}"
-    [[ -e "$LEFT_CAMERA_DEVICE" && -e "$RIGHT_CAMERA_DEVICE" && "$LEFT_CAMERA_DEVICE" != "$RIGHT_CAMERA_DEVICE" ]]
-    [[ "$(readlink -f "$LEFT_CAMERA_DEVICE")" != "$(readlink -f "$RIGHT_CAMERA_DEVICE")" ]]
+    require_camera "$LEFT_CAMERA_DEVICE"
+    require_camera "$RIGHT_CAMERA_DEVICE"
+    [[ "$(readlink -f "$LEFT_CAMERA_DEVICE")" != "$(readlink -f "$RIGHT_CAMERA_DEVICE")" ]] ||
+      fail "left and right identities resolve to the same camera"
     devices+=(--device "$LEFT_CAMERA_DEVICE:$LEFT_CAMERA_DEVICE")
     devices+=(--device "$RIGHT_CAMERA_DEVICE:$RIGHT_CAMERA_DEVICE")
   fi
   if [[ "$launch" == "read_only_telemetry.launch.py" || "$launch" == "hardware_integration.launch.py" || "$launch" == "sensor_diagnostics.launch.py" ]]; then
     : "${FLIGHT_CONTROLLER_DEVICE:?set FLIGHT_CONTROLLER_DEVICE to a persistent /dev/serial/by-id entry}"
-  fi
-  if [[ "$launch" == "read_only_telemetry.launch.py" || "$launch" == "hardware_integration.launch.py" || "$launch" == "sensor_diagnostics.launch.py" ]]; then
     [[ -e "$FLIGHT_CONTROLLER_DEVICE" &&
        ( "$FLIGHT_CONTROLLER_DEVICE" == /dev/serial/by-id/* ||
-         "$FLIGHT_CONTROLLER_DEVICE" == /dev/serial/by-path/* ) ]]
+         "$FLIGHT_CONTROLLER_DEVICE" == /dev/serial/by-path/* ) ]] ||
+      fail "persistent serial device unavailable or invalid: $FLIGHT_CONTROLLER_DEVICE"
     devices+=(--device "$FLIGHT_CONTROLLER_DEVICE:$FLIGHT_CONTROLLER_DEVICE")
   fi
   docker run --rm -it --network host --restart no --env "ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-42}" \
@@ -63,14 +71,14 @@ run_hardware() {
 run_capture() {
   : "${LEFT_CAMERA_DEVICE:?set LEFT_CAMERA_DEVICE to a persistent video path}"
   : "${RIGHT_CAMERA_DEVICE:?set RIGHT_CAMERA_DEVICE to a persistent video path}"
-  [[ "$LEFT_CAMERA_DEVICE" == /dev/v4l/by-id/* || "$LEFT_CAMERA_DEVICE" == /dev/v4l/by-path/* ]]
-  [[ "$RIGHT_CAMERA_DEVICE" == /dev/v4l/by-id/* || "$RIGHT_CAMERA_DEVICE" == /dev/v4l/by-path/* ]]
-  [[ -e "$LEFT_CAMERA_DEVICE" && -e "$RIGHT_CAMERA_DEVICE" ]]
-  [[ "$(readlink -f "$LEFT_CAMERA_DEVICE")" != "$(readlink -f "$RIGHT_CAMERA_DEVICE")" ]]
+  require_camera "$LEFT_CAMERA_DEVICE"
+  require_camera "$RIGHT_CAMERA_DEVICE"
+  [[ "$(readlink -f "$LEFT_CAMERA_DEVICE")" != "$(readlink -f "$RIGHT_CAMERA_DEVICE")" ]] ||
+    fail "left and right identities resolve to the same camera"
   local width="${1:?width required}" height="${2:?height required}" fps="${3:?fps required}"
   local tolerance="${4:?maximum pair delta in milliseconds required}" count="${5:?pair count required}"
   local name="${6:-capture_$(date -u +%Y%m%dT%H%M%SZ)}" format="${7:-}"
-  [[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]]
+  [[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]] || fail "capture name must contain only letters, digits, underscores or hyphens"
   prepare_data
   docker run --rm -it --network host \
     --device "$LEFT_CAMERA_DEVICE:$LEFT_CAMERA_DEVICE" \
@@ -82,11 +90,11 @@ run_capture() {
 run_calibration() {
   local name="${1:?capture name required}" columns="${2:?inner columns required}"
   local rows="${3:?inner rows required}" square="${4:?square size in meters required}"
-  [[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]]
+  [[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]] || fail "invalid capture name"
   : "${LEFT_CAMERA_DEVICE:?set LEFT_CAMERA_DEVICE to the captured left identity}"
   : "${RIGHT_CAMERA_DEVICE:?set RIGHT_CAMERA_DEVICE to the captured right identity}"
   prepare_data
-  [[ -f "$data/calibration/$name/manifest.csv" ]]
+  [[ -f "$data/calibration/$name/manifest.csv" ]] || fail "capture manifest unavailable: $name"
   awk -F, -v left="$LEFT_CAMERA_DEVICE" -v right="$RIGHT_CAMERA_DEVICE" \
     'NR > 1 && ($2 != left || $3 != right) { exit 1 }' "$data/calibration/$name/manifest.csv" || {
       echo "camera identities disagree with capture manifest" >&2; return 2;
@@ -122,7 +130,7 @@ case "${1:-}" in
     docker logs "$container"
     ;;
   shell)
-    docker exec -it "$container" bash
+    docker exec -it "$container" bash -c 'source /opt/ros/jazzy/setup.bash && source /opt/robotics/install/setup.bash && exec bash --norc -i'
     ;;
   camera)
     run_hardware uvc_stereo.launch.py
@@ -145,7 +153,8 @@ case "${1:-}" in
     run_hardware sensor_diagnostics.launch.py
     ;;
   diagnose)
-    "$(dirname "$0")/pi_diagnostics.sh"
+    prepare_data
+    "$script_dir/pi_diagnostics.sh" "$data/diagnostics/$(date -u +%Y%m%dT%H%M%SZ)"
     ;;
   update)
     build_image
@@ -153,7 +162,7 @@ case "${1:-}" in
       docker stop "$container" || true
       docker rm "$container"
     fi
-    "$0" start
+    "$script_dir/pi_deploy.sh" start
     ;;
   *)
     echo "usage: $0 {build|start|stop|logs|shell|capture WIDTH HEIGHT FPS DELTA_MS COUNT [NAME] [FOURCC]|calibrate NAME COLUMNS ROWS SQUARE_M|camera|telemetry|sensors|integration|diagnose|update}" >&2

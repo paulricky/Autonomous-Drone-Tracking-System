@@ -42,8 +42,11 @@ std::optional<Packet> SerialTelemetry::query(std::uint8_t command,
   if (command != kIdent && command != kStatus && command != kRawImu &&
       command != kRc && command != kAttitude && command != kAnalog)
     throw std::invalid_argument("MSP query is not on the read-only allowlist");
-  if (!connected() || timeout.count() <= 0 || timeout.count() > 1000)
-    throw std::invalid_argument("serial connection or timeout invalid");
+  if (timeout.count() <= 0 || timeout.count() > 1000)
+    throw std::invalid_argument("serial timeout invalid");
+  // Disconnection is an expected transport event, including between queries
+  // in one telemetry poll. Let the owner publish unavailable data and reconnect.
+  if (!connected()) return std::nullopt;
   // MSP v1 has no transaction ID. Drop a timed-out partial reply and any
   // already queued bytes before issuing the next single outstanding query.
   parser_.discard_partial();

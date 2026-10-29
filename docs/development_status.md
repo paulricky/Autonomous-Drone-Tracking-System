@@ -2,9 +2,51 @@
 
 ## Current state
 
-2026-10-28: Raspberry Pi deployment and non-actuating hardware software preparation
-completed in this working tree, based on commit `c16c231`. Changes are uncommitted.
-Physical readiness and native ARM64 compilation remain unverified.
+2026-10-28: Prior deployment and naming work is committed as `2e1f430`.
+The follow-up reliability fixes below are uncommitted. No further software-only
+blocker to attempting native Pi deployment was identified. Physical readiness
+and native ARM64 compilation remain unverified.
+
+## Latest reliability fixes and validation
+
+- Fixed a confirmed mid-poll serial-disconnect failure: subsequent read-only
+  queries now return unavailable instead of throwing and terminating telemetry.
+  Diagnostics explicitly report disconnect/reconnect pending. Invalid query
+  commands and timeouts still throw; physical output remains unavailable.
+- Deployment now reports missing/invalid devices and capture names clearly,
+  loads ROS and workspace overlays in its interactive shell, honors custom
+  persistent storage for diagnostics, and resolves helper paths when invoked
+  from outside the repository. Existing operator config is preserved.
+- Diagnostics bound each external command to 15 seconds, record failures and
+  continue collecting evidence after V4L2/USB/udev errors. Serial permission
+  inspection follows the persistent symlink to the actual device.
+- Changed files: `scripts/pi_deploy.sh`, `scripts/pi_diagnostics.sh`,
+  `src/robotics_core/include/robotics_core/msp_serial.hpp`,
+  `src/robotics_core/src/{msp_serial,msp_telemetry_node}.cpp`,
+  `src/robotics_core/test/test_msp_serial.cpp`, and this handoff.
+- Incremental AMD64 Jazzy `robotics_core` build passed (20.3 s). Seven selected
+  test cases passed across `test_msp`, `test_msp_serial`, `test_command_gate`,
+  including persistent-path replacement/reconnect on virtual serial ports.
+  Colcon reported 41 aggregate retained results with zero failures/errors;
+  unrelated suites were not rerun. Standard `build/`, `install/`, `log/` used.
+- Isolated Linux script checks passed for missing devices, mismatched native
+  architecture rejection, start/restart, config preservation, sourced shell,
+  invocation outside the repository, custom data storage, and continued report
+  collection after failed V4L2/USB tools. These used mocked utilities and a
+  `/dev/null` fixture, not physical devices. Shell syntax and diff checks passed.
+- No broad navigation regression or emulated ARM64 build was repeated: these
+  changes affect deployment/transport failure handling, not navigation algorithms.
+  Prior ARM64 image/dependency checks remain the available evidence.
+
+Next action: on a Raspberry Pi 5 with Ubuntu 24.04 ARM64, adequate power/cooling
+and Docker, run `scripts/pi_deploy.sh build`, then `scripts/pi_deploy.sh start`
+and `scripts/pi_deploy.sh diagnose`. Retain the build-info and diagnostic files.
+For sensor bring-up, provide both OV9281 cameras with stable USB assignments,
+a measured checkerboard and rigid mount, and the actual controller plus its
+documented serial/firmware identity. Follow `PI_DEPLOYMENT.md` to capture,
+calibrate and configure measured transforms before `camera` or `sensors`.
+Keep propellers removed during controller bench work. No physical device was
+opened, and no actuator command or navigation goal was sent in this follow-up.
 
 ## Implemented
 

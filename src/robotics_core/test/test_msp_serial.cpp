@@ -58,3 +58,42 @@ TEST(MspSerial, CorrelatesFragmentedReadOnlyReplyOnVirtualPort) {
   transport.close_port();
   ::close(master);
 }
+
+TEST(MspSerial, DisconnectBetweenQueriesAllowsPersistentPathReconnect) {
+  auto make_port = [] {
+    const int master = ::posix_openpt(O_RDWR | O_NOCTTY);
+    if (master < 0) return -1;
+    if (::grantpt(master) != 0 || ::unlockpt(master) != 0) {
+      ::close(master);
+      return -1;
+    }
+    return master;
+  };
+  char path[] = "/tmp/msp-serial-reconnect-XXXXXX";
+  const int temporary = ::mkstemp(path);
+  ASSERT_GE(temporary, 0);
+  ::close(temporary);
+  ::unlink(path);
+  const int first = make_port();
+  ASSERT_GE(first, 0);
+  ASSERT_EQ(::symlink(::ptsname(first), path), 0);
+  robotics::msp::SerialTelemetry transport(path, 115200);
+  ASSERT_TRUE(transport.open_port());
+  ::close(first);
+  EXPECT_FALSE(transport.query(robotics::msp::kStatus, std::chrono::milliseconds(20)));
+  EXPECT_FALSE(transport.connected());
+  // Remaining queries in this poll must report unavailable, without throwing.
+  EXPECT_FALSE(transport.query(robotics::msp::kRawImu, std::chrono::milliseconds(20)));
+  EXPECT_THROW(transport.query(robotics::msp::kSetRawRc, std::chrono::milliseconds(20)),
+               std::invalid_argument);
+  const int replacement = make_port();
+  ASSERT_GE(replacement, 0);
+  ::unlink(path);
+  ASSERT_EQ(::symlink(::ptsname(replacement), path), 0);
+  EXPECT_TRUE(transport.open_port());
+  EXPECT_FALSE(transport.query(robotics::msp::kIdent, std::chrono::milliseconds(10)));
+  EXPECT_TRUE(transport.connected());  // A bounded reply timeout permits another poll.
+  transport.close_port();
+  ::close(replacement);
+  ::unlink(path);
+}
