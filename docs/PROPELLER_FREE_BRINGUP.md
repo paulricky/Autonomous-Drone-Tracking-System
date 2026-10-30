@@ -202,7 +202,11 @@ power limits and each controller failsafe independently. No readiness setting
 can currently enable physical output.
 
 After a future verified landing, require fresh confirmed grounded **and**
-disarmed telemetry and a successful `/mission/prepare_shutdown` response.
+disarmed telemetry, then an explicit Pi-local operator authorization
+(`shutdown_authorized` is false by default) and a successful
+`/mission/prepare_shutdown` response. The flag is a software interlock;
+ROS 2 parameter access alone does not authenticate an operator, so access
+control must be validated separately before flight.
 The operator must then secure propulsion power using the controller-specific
 procedure, collect logs, stop ROS, and finally shut down the Pi normally.
 The query itself never shuts down the OS or disconnects the controller.

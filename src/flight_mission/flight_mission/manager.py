@@ -17,6 +17,7 @@ class MissionManager(Node):
     def __init__(self) -> None:
         super().__init__("mission_manager")
         self.declare_parameter("hardware_output_enabled", False)
+        self.declare_parameter("shutdown_authorized", False)
         if self.get_parameter("hardware_output_enabled").value:
             raise RuntimeError("mission manager cannot enable physical hardware output")
         self.machine = MissionMachine()
@@ -137,9 +138,10 @@ class MissionManager(Node):
         return response
 
     def prepare_shutdown(self, _, response):
-        response.success = self.landing.shutdown_ready(time.monotonic())
+        response.success = self.landing.shutdown_ready(
+            time.monotonic(), authorized=self.get_parameter("shutdown_authorized").value is True)
         response.message = ("disarming confirmed; operator may follow the supervised power-down procedure"
-                            if response.success else "shutdown denied: confirmed landed and disarmed controller state required")
+                            if response.success else "shutdown denied: explicit operator authorization and fresh confirmed landed/disarmed controller state required")
         # This is an interlock query, never an OS shutdown or controller disconnect.
         return response
 

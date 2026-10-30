@@ -1,5 +1,52 @@
 # Development handoff
 
+## Current physical bring-up and landing status (2026-10-29)
+
+**NOT READY for flight.** The current clean baseline `cc6c210` contains
+Pi-local `/mission/land`, `/mission/disarm`, `/mission/prepare_shutdown`,
+navigation cancellation/inhibition, a controller-independent landing state
+machine, read-only MSP API/variant/version/board inventory, and an explicit
+`/preflight/check` report. The production landing adapter is deliberately
+unavailable because the connected flight-controller firmware and its native
+landing/landed indication have not been identified. It sends no mode, RC,
+arm, disarm, motor or landing command. Physical output is still disabled.
+
+Landing status is requested, acknowledged landing, confirmed landed,
+confirmed disarmed, or failed. Navigation remains inhibited after LAND,
+including after rejection or a repeated request. Disarm requires fresh
+authoritative ground/landed feedback; shutdown preparation additionally
+requires fresh confirmed disarming and explicit operator authorization, false
+by default. `/mission/prepare_shutdown` is only an interlock query and never
+halts the Pi. ROS parameter access does not independently authenticate an
+operator, so manual/pilot recovery and access control remain unverified.
+
+The interrupted Docker failure was a real readiness-node defect, not a Docker,
+package-discovery or MSP dependency issue: assigning an integer to Jazzy's
+byte-valued `diagnostic_msgs/DiagnosticStatus.level` caused a C conversion
+assertion. The node now uses the message's byte constants. The later AMD64
+Docker check passed 31 `flight_mission` tests, including mocked landing,
+live navigation inhibition/preflight, and three virtual-serial MSP inventory
+cases. Targeted core MSP/serial/command-gate tests, five bring-up tests and
+nine mocked Pi-deployment tests also passed. The image is AMD64 on a macOS
+x86_64 host; this is not native ARM64/Pi validation.
+
+The continuation added an explicit shutdown authorization interlock, false by
+default, and separate PASS/FAIL/UNVERIFIED entries for camera operation,
+controller identity, MSP compatibility and operator identity. The focused
+AMD64 rebuild of `flight_mission` and `robotics_bringup` passed. All 31 mission,
+five bring-up and nine mocked deployment tests passed; targeted core MSP,
+virtual serial and command-gate tests passed in the earlier run. After the
+operator-identity report refinement, the focused `flight_mission` rebuild and
+24 landing/readiness tests passed. Native Pi
+compilation, camera
+acquisition/calibration/mounting, firmware/protocol/control-mode and landing
+compatibility, IMU metadata, localization covariance/health, independent
+pilot recovery, failsafes, motor configuration and power all require measured
+hardware evidence. Use [the ordered propeller-free bring-up procedure]
+(PROPELLER_FREE_BRINGUP.md): `scripts/pi_deploy.sh build`, `start`, `preflight`,
+`diagnose`, then camera capture/calibration and read-only telemetry on the Pi.
+No powered flight or motor test is authorized by these software results.
+
 ## Current state
 
 2026-10-28: Prior deployment and naming work is committed as `2e1f430`.

@@ -13,9 +13,9 @@ class Check:
 def evaluate(*, operator_authorized=False, telemetry_fresh=False,
              position_velocity_fresh=False, output_disabled=True):
     checks = [
-        Check("operator_authorization", "PASS" if operator_authorized else "FAIL",
-              "operator authorization recorded" if operator_authorized else "operator authorization absent",
-              "Independent operator flight review after every other requirement is verified"),
+        Check("operator_authorization", "UNVERIFIED" if operator_authorized else "FAIL",
+              "ROS authorization flag asserted; operator identity and physical approval unverified" if operator_authorized else "operator authorization absent",
+              "Verify independent operator identity, pilot approval and access control before flight"),
         Check("physical_output_inhibited", "PASS" if output_disabled else "FAIL",
               "physical actuator backend absent; output disabled" if output_disabled else "unsafe output configuration observed",
               "Keep all hardware_output_enabled settings false and emergency_stop true for bench work"),
@@ -27,9 +27,11 @@ def evaluate(*, operator_authorized=False, telemetry_fresh=False,
               "Calibrate stereo, measure camera-to-body transform; verify state rates and reference motion"),
     ]
     unknown = {
-        "controller_identity_protocol": ("No controller-specific compatibility validation", "Capture API, variant, version, board replies and compare with exact firmware source/configurator"),
+        "controller_identity_firmware": ("Controller board and exact firmware have not been matched to this aircraft", "Capture API, variant, version and board replies; confirm them against board markings and the firmware configurator"),
+        "msp_protocol_compatibility": ("Read-only packet parsing does not verify the controller command protocol", "Compare exact firmware API version and command interface with its source/configurator; test read-only disconnect behavior"),
         "physical_control_mode": ("Supported setpoint interface and mode unverified", "Verify controller-supported control interface and mode acknowledgement"),
         "sensor_calibration_validation": ("Physical calibration, axes and timing unverified", "Measure stereo intrinsics/extrinsics, mounting, IMU SI units/axes/clock; validate against reference motion"),
+        "stereo_camera_operation": ("Neither OV9281 acquisition mode, frame timing nor USB stability has been verified on the Pi", "Inventory both persistent capture devices; measure modes, skew, dropouts and calibrated frame quality"),
         "localization_health": ("VO validity alone cannot establish flight localization health", "Validate drift, velocity, reset/loss handling and frame transforms against measured motion"),
         "attitude_angular_rate": ("VehicleState contains only position and velocity; IMU counts are unfused", "Provide verified attitude/rates, body-frame units and timestamped measurement fusion required by the selected physical interface"),
         "measurement_covariance": ("VO covariance unmeasured; raw IMU covariance unavailable", "Measure and validate covariance; do not treat a negative covariance sentinel as a valid covariance matrix"),
@@ -42,6 +44,7 @@ def evaluate(*, operator_authorized=False, telemetry_fresh=False,
         "safe_environment": ("No operator confirmation of props removed or test area", "Physically remove propellers; secure aircraft, clear area, establish pilot access and appropriate power setup"),
         "controlled_landing": ("ROS interlocks implemented; physical landing adapter unavailable", "Identify and integrate verified built-in landing, then verify acknowledgement, progress, timeout and ground indication"),
         "grounded_disarming_shutdown": ("Authoritative landed/disarmed feedback unavailable", "Verify ground indication and disarm acknowledgement before preparing shutdown; never disconnect during landing"),
+        "shutdown_authorization": ("Independent operator shutdown authority is not verified", "Require a Pi-local operator authorization after confirmed landed/disarmed state; verify access control before flight"),
         "native_arm64_execution": ("Current report cannot attest native Pi build/execution", "Run native Ubuntu 24.04 ARM64 build on Pi and retain build-info, build log and runtime diagnostics"),
     }
     checks.extend(Check(name, "UNVERIFIED", reason, action) for name, (reason, action) in unknown.items())

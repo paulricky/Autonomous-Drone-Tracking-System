@@ -72,6 +72,8 @@ class LandingCoordinator:
         self.last_stamp = -math.inf
 
     def _fail(self, reason):
+        if self.state == LandingState.LANDING_FAILED:
+            return False
         self.state, self.detail = LandingState.LANDING_FAILED, reason
         # An adapter may invoke only its independently verified controller policy.
         # Unknown firmware never gets a guessed emergency response.
@@ -181,7 +183,8 @@ class LandingCoordinator:
         self.detail = "ground confirmed; disarm requested, awaiting controller confirmation"
         return True
 
-    def shutdown_ready(self, now):
-        return (self.state == LandingState.DISARMED and self._fresh(now) and
+    def shutdown_ready(self, now, *, authorized=False):
+        return (authorized and self.navigation_inhibited and
+                self.state == LandingState.DISARMED and self._fresh(now) and
                 self.latest.armed is False and
                 (self.latest.landed or self.latest.ground_contact_verified))
