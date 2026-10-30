@@ -41,12 +41,13 @@ static geometry_msgs::msg::Quaternion quaternion(const cv::Matx33d& r) {
 }
 class PerceptionNode final : public rclcpp::Node {
  public:
-  PerceptionNode() : Node("stereo_perception"), sync_(
-      declare_parameter("max_pair_delta_s", .005), 4) {
+  PerceptionNode()
+      : Node("stereo_perception"), sync_(declare_parameter("max_pair_delta_s", .005), 4) {
     cv::setNumThreads(1);
     mode_ = declare_parameter("mode", "synthetic");
     expected_left_frame_ = declare_parameter("expected_left_frame_id", "left_camera_optical_frame");
-    expected_right_frame_ = declare_parameter("expected_right_frame_id", "right_camera_optical_frame");
+    expected_right_frame_ =
+        declare_parameter("expected_right_frame_id", "right_camera_optical_frame");
     if (expected_left_frame_ != "left_camera_optical_frame" ||
         expected_right_frame_ != "right_camera_optical_frame")
       throw std::invalid_argument("invalid stereo optical frame identifiers");
@@ -67,16 +68,19 @@ class PerceptionNode final : public rclcpp::Node {
     const auto output = declare_parameter("results_directory", "");
     const auto initial_position =
         declare_parameter("initial_body_position", std::vector<double>{0, 0, 1});
-    const auto translation = declare_parameter(
-        "body_from_left_optical_translation", std::vector<double>{0, 0, 0});
-    const auto rotation_vector = declare_parameter(
-        "body_from_left_optical_rotation_vector", std::vector<double>{0, 0, 0});
+    const auto translation =
+        declare_parameter("body_from_left_optical_translation", std::vector<double>{0, 0, 0});
+    const auto rotation_vector =
+        declare_parameter("body_from_left_optical_rotation_vector", std::vector<double>{0, 0, 0});
     const bool mounting_verified = declare_parameter("mounting_verified", false);
     if (mode_ == "external" && !mounting_verified)
-      throw std::invalid_argument("measured camera mounting required: set translation, rotation and mounting_verified");
+      throw std::invalid_argument(
+          "measured camera mounting required: set translation, rotation and mounting_verified");
     const auto mount_translation = translation.empty() ? std::vector<double>{0, 0, 0} : translation;
-    const auto mount_rotation = rotation_vector.empty() ? std::vector<double>{0, 0, 0} : rotation_vector;
-    if (initial_position.size() != 3 || mount_translation.size() != 3 || mount_rotation.size() != 3) {
+    const auto mount_rotation =
+        rotation_vector.empty() ? std::vector<double>{0, 0, 0} : rotation_vector;
+    if (initial_position.size() != 3 || mount_translation.size() != 3 ||
+        mount_rotation.size() != 3) {
       throw std::invalid_argument("pose parameters must have three SI values");
     }
     for (const auto& values : {initial_position, mount_translation, mount_rotation}) {
@@ -86,7 +90,8 @@ class PerceptionNode final : public rclcpp::Node {
       }
     }
     // Rotation vector is the mounting offset relative to the optical-to-FLU convention.
-    body_from_raw_camera_ = ep::camera_pose({mount_translation[0], mount_translation[1], mount_translation[2]});
+    body_from_raw_camera_ =
+        ep::camera_pose({mount_translation[0], mount_translation[1], mount_translation[2]});
     cv::Matx33d mounting_rotation;
     cv::Rodrigues(cv::Vec3d(mount_rotation[0], mount_rotation[1], mount_rotation[2]),
                   mounting_rotation);
@@ -109,11 +114,11 @@ class PerceptionNode final : public rclcpp::Node {
       throw std::invalid_argument("mode must be synthetic, recorded, or external");
     auto calibration = mode_ == "synthetic" ? synthetic_->calibration()
                                             : ep::StereoCalibration::load(calibration_path);
-    if (mode_ == "external" &&
-        (calibration.provenance != "OpenCV chessboard stereo calibration" ||
-         calibration.rms_error > 1.0 || calibration.left_rms_error > 1.0 ||
-         calibration.right_rms_error > 1.0))
-      throw std::invalid_argument("external perception requires measured, quality-checked stereo calibration");
+    if (mode_ == "external" && (calibration.provenance != "OpenCV chessboard stereo calibration" ||
+                                calibration.rms_error > 1.0 || calibration.left_rms_error > 1.0 ||
+                                calibration.right_rms_error > 1.0))
+      throw std::invalid_argument(
+          "external perception requires measured, quality-checked stereo calibration");
     cv::Matx44d raw_from_rectified = cv::Matx44d::eye();
     for (int i = 0; i < 3; ++i)
       for (int j = 0; j < 3; ++j)
@@ -156,8 +161,8 @@ class PerceptionNode final : public rclcpp::Node {
         create_publisher<sensor_msgs::msg::CameraInfo>("stereo/right/camera_info", sensor);
     cloud_ = create_publisher<sensor_msgs::msg::PointCloud2>("perception/occupied_points", sensor);
     odom_ = create_publisher<nav_msgs::msg::Odometry>("visual_odometry", 10);
-    state_ = create_publisher<flight_interfaces::msg::VehicleState>("perception/state_estimate",
-                                                                     sensor);
+    state_ =
+        create_publisher<flight_interfaces::msg::VehicleState>("perception/state_estimate", sensor);
     diagnostics_ =
         create_publisher<diagnostic_msgs::msg::DiagnosticArray>("perception/diagnostics", 10);
     tf_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -436,7 +441,8 @@ class PerceptionNode final : public rclcpp::Node {
     o.twist.twist.linear.x = local_velocity[0];
     o.twist.twist.linear.y = local_velocity[1];
     o.twist.twist.linear.z = local_velocity[2];
-    // No measured VO noise model exists yet; ROS convention marks covariance unknown.
+    // No measured VO noise model exists. This project uses a negative sentinel;
+    // it is NOT a valid Odometry covariance or a flight-estimator input.
     o.pose.covariance[0] = -1;
     o.twist.covariance[0] = -1;
     odom_->publish(o);

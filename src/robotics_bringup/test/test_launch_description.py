@@ -7,7 +7,7 @@ class LaunchDescriptionTest(unittest.TestCase):
     def test_perception_launches_construct(self):
         for name in ("synthetic_perception", "stereo_localization", "perception_navigation",
                      "uvc_stereo", "read_only_telemetry", "hardware_diagnostics",
-                     "hardware_integration", "camera_calibration", "sensor_diagnostics"):
+                     "hardware_integration", "camera_calibration", "sensor_diagnostics", "mission_safety"):
             path = Path(__file__).parents[1] / "launch" / (name + ".launch.py")
             spec = importlib.util.spec_from_file_location(name, path)
             module = importlib.util.module_from_spec(spec)
@@ -20,4 +20,4 @@ class LaunchDescriptionTest(unittest.TestCase):
         self.assertIsNotNone(spec.loader)
         spec.loader.exec_module(module)
         description = module.generate_launch_description()
-        self.assertEqual(len(description.entities), 4)
+        self.assertEqual(len(description.entities), 5)

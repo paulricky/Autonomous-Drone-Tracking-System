@@ -54,7 +54,7 @@ def validate(context, *, cameras=False, telemetry=False, integrated=False):
         device = controller.get("serial_device", "")
         if controller.get("transport_enabled") is not True or controller.get("hardware_output_enabled") is not False:
             raise ValueError("read-only MSP transport must be explicitly enabled with output disabled")
-        if controller.get("protocol") != "legacy_msp_v1_candidate":
+        if controller.get("protocol") not in ("legacy_msp_v1_candidate", "msp_v1_read_only_candidate"):
             raise ValueError("MSP v1 candidate protocol must be selected explicitly")
         if not isinstance(device, str) or not device.startswith(("/dev/serial/by-id/", "/dev/serial/by-path/")) or "UNCONFIGURED" in device or not Path(device).exists():
             raise ValueError(f"persistent serial device missing or unavailable: {device}")

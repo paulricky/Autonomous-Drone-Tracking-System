@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <fcntl.h>
+#include <gtest/gtest.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -7,6 +7,46 @@
 #include <thread>
 
 #include "robotics_core/msp_serial.hpp"
+
+TEST(MspSerial, IdentityQueriesRemainReadOnlyOnVirtualTransport) {
+  const int master = ::posix_openpt(O_RDWR | O_NOCTTY);
+  ASSERT_GE(master, 0);
+  ASSERT_EQ(::grantpt(master), 0);
+  ASSERT_EQ(::unlockpt(master), 0);
+  robotics::msp::SerialTelemetry transport(::ptsname(master), 115200);
+  ASSERT_TRUE(transport.open_port());
+  std::thread peer([master] {
+    for (const auto command : {robotics::msp::kApiVersion, robotics::msp::kFcVariant,
+                               robotics::msp::kFcVersion, robotics::msp::kBoardInfo}) {
+      std::uint8_t request[6];
+      std::size_t received = 0;
+      while (received < sizeof(request)) {
+        const auto n = ::read(master, request + received, sizeof(request) - received);
+        if (n <= 0)
+          return;
+        received += static_cast<std::size_t>(n);
+      }
+      if (request[2] != '<' || request[3] != 0 || request[4] != command)
+        return;
+      auto response = robotics::msp::encode(command, {0, 1, 46});
+      response[2] = '>';
+      if (::write(master, response.data(), response.size()) !=
+          static_cast<ssize_t>(response.size()))
+        return;
+    }
+  });
+  for (const auto command : {robotics::msp::kApiVersion, robotics::msp::kFcVariant,
+                             robotics::msp::kFcVersion, robotics::msp::kBoardInfo}) {
+    const auto response = transport.query(command, std::chrono::milliseconds(300));
+    EXPECT_TRUE(response);
+  }
+  peer.join();
+  // Mode, motor, reboot, configuration and RC writes are outside this transport.
+  for (const auto command : {68, 200, 214, 250})
+    EXPECT_THROW(transport.query(command, std::chrono::milliseconds(10)), std::invalid_argument);
+  transport.close_port();
+  ::close(master);
+}
 
 TEST(MspSerial, CorrelatesFragmentedReadOnlyReplyOnVirtualPort) {
   const int master = ::posix_openpt(O_RDWR | O_NOCTTY);
@@ -22,7 +62,8 @@ TEST(MspSerial, CorrelatesFragmentedReadOnlyReplyOnVirtualPort) {
       std::size_t offset = 0;
       while (offset < length) {
         const ssize_t n = ::write(master, bytes + offset, length - offset);
-        if (n <= 0) return false;
+        if (n <= 0)
+          return false;
         offset += static_cast<std::size_t>(n);
       }
       return true;
@@ -31,20 +72,25 @@ TEST(MspSerial, CorrelatesFragmentedReadOnlyReplyOnVirtualPort) {
     std::size_t received = 0;
     while (received < sizeof(request)) {
       const ssize_t n = ::read(master, request + received, sizeof(request) - received);
-      if (n <= 0) return;
+      if (n <= 0)
+        return;
       received += static_cast<std::size_t>(n);
     }
-    if (request[0] != '$' || request[4] != robotics::msp::kIdent) return;
+    if (request[0] != '$' || request[4] != robotics::msp::kIdent)
+      return;
     auto unrelated = robotics::msp::encode(robotics::msp::kStatus, {});
     unrelated[2] = '>';
-    if (!send(unrelated.data(), unrelated.size())) return;
+    if (!send(unrelated.data(), unrelated.size()))
+      return;
     auto bad = robotics::msp::encode(robotics::msp::kIdent, {1, 2, 3, 4, 5, 6, 7});
     bad[2] = '>';
     bad.back() ^= 1;
-    if (!send(bad.data(), bad.size())) return;
+    if (!send(bad.data(), bad.size()))
+      return;
     bad.back() ^= 1;
     for (auto byte : bad) {
-      if (!send(&byte, 1)) return;
+      if (!send(&byte, 1))
+        return;
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   });
@@ -62,7 +108,8 @@ TEST(MspSerial, CorrelatesFragmentedReadOnlyReplyOnVirtualPort) {
 TEST(MspSerial, DisconnectBetweenQueriesAllowsPersistentPathReconnect) {
   auto make_port = [] {
     const int master = ::posix_openpt(O_RDWR | O_NOCTTY);
-    if (master < 0) return -1;
+    if (master < 0)
+      return -1;
     if (::grantpt(master) != 0 || ::unlockpt(master) != 0) {
       ::close(master);
       return -1;

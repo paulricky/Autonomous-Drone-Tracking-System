@@ -17,6 +17,14 @@ capture() {
 }
 capture system.txt uname -a
 capture system.txt cat /etc/os-release
+capture system.txt cat /proc/device-tree/model
+capture power.txt timedatectl status
+capture power.txt sh -c 'for path in /sys/class/thermal/thermal_zone*/temp; do printf "%s=" "$path"; cat "$path"; done'
+if command -v vcgencmd >/dev/null 2>&1; then
+  capture power.txt vcgencmd get_throttled
+  capture power.txt vcgencmd measure_temp
+fi
+capture kernel.txt journalctl -k -b -n 250 --no-pager
 capture usb.txt lsusb
 capture cameras.txt v4l2-ctl --list-devices
 capture device_paths.txt ls -l /dev/v4l/by-id /dev/v4l/by-path /dev/serial/by-id /dev/serial/by-path
@@ -44,6 +52,9 @@ for device in /dev/serial/by-id/* /dev/serial/by-path/*; do
   } >> "$output/serial_devices.txt" 2>&1
 done
 capture container.log docker logs "${ROBOTICS_CONTAINER:-robotics-stack}"
+capture bench.log docker logs "${ROBOTICS_BENCH_CONTAINER:-robotics-bench}"
 capture ros_graph.txt docker exec "${ROBOTICS_CONTAINER:-robotics-stack}" bash -lc \
+  'source /opt/ros/jazzy/setup.bash && source /opt/robotics/install/setup.bash && { timeout 5s ros2 node list; timeout 5s ros2 topic list -t; }'
+capture bench_ros_graph.txt docker exec "${ROBOTICS_BENCH_CONTAINER:-robotics-bench}" bash -lc \
   'source /opt/ros/jazzy/setup.bash && source /opt/robotics/install/setup.bash && { timeout 5s ros2 node list; timeout 5s ros2 topic list -t; }'
 echo "$output"

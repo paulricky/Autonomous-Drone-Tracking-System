@@ -1,5 +1,11 @@
 # Hardware readiness checklist
 
+**NOT READY.** Use [the immediate propeller-free procedure](PROPELLER_FREE_BRINGUP.md).
+`/preflight/check` now reports each flight condition as PASS, FAIL or UNVERIFIED.
+Local ROS LAND/navigation interlocks exist, but actual controller landing,
+grounded disarming, shutdown authorization and independent manual recovery
+remain unverified and are mandatory before flight review.
+
 The implementation and operator procedures are in
 [Pi deployment and bench preparation](PI_DEPLOYMENT.md). The
 read-only MSP probe and physical command gate remain non-actuating.

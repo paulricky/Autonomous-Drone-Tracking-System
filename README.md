@@ -130,8 +130,9 @@ Executed numerical results and limitations are recorded in
 This unified platform plans and simulates autonomous 3-D navigation for the
 recovered Duckietown Duckiedrone while preserving earlier hand-guided F450 and
 MuJoCo experiments as optional inputs/simulators. Stereo is the intended
-environment sensor. The verified future low-level boundary is the recovered
-SP Racing F3/MSP stack—not PX4—and physical output remains blocked.
+environment sensor. Recovered source describes an SP Racing F3/MSP stack;
+the connected board, firmware and physical control interface remain unverified,
+and physical output remains blocked.
 
 ## Motion-Planning Objective
 

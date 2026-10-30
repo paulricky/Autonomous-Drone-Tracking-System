@@ -1,5 +1,9 @@
 # Raspberry Pi 5 deployment and bench preparation
 
+For the immediate ordered operator procedure, use
+[propeller-free bring-up](PROPELLER_FREE_BRINGUP.md), including local LAND,
+grounded-disarming/shutdown interlocks and explicit preflight results.
+
 The release image uses the ROS 2 Jazzy Ubuntu 24.04 base for `amd64` and `arm64`.
 Build on the Raspberry Pi 5 for the ARM64 deployment milestone. A build on
 another architecture, including emulated ARM64, does not validate Pi USB,
@@ -99,13 +103,15 @@ estimates. Hardware synchronization remains unverified.
 ## Read-only flight-controller discovery
 
 Inspect the actual controller board, firmware, and USB serial identity before
-editing `serial_device` and setting `protocol: legacy_msp_v1_candidate` and
+editing `serial_device` and setting `protocol: msp_v1_read_only_candidate` and
 `transport_enabled: true`. The archived controller code shows MSP v1 `IDENT`,
 `STATUS`, `ANALOG`, and `RAW_IMU` queries, but the live controller version is
 unknown. Run `FLIGHT_CONTROLLER_DEVICE=... scripts/pi_deploy.sh telemetry` with
-propellers removed. This node sends only those read-only requests, checks MSP
+propellers removed. This node first probes API_VERSION, variant/version/board
+identity for supported API layouts, falling back to legacy IDENT. It sends only read-only requests, checks MSP
 framing and checksums, and publishes raw fields and diagnostics. Its ROS stamp
-is host poll completion, not a controller sensor timestamp. Raw IMU counts
+is host poll completion, not a controller sensor timestamp; poll start/span and
+uninterpreted extended replies are also published. Raw IMU counts
 are deliberately not converted to SI units or fused until the actual sensor
 scale, axes, covariance, timing, and gravity convention are measured. It never
 sends `MSP_SET_RAW_RC` or changes a mode. MSP v1 has no transaction ID; the

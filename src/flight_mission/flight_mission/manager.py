@@ -1,14 +1,17 @@
 """Low-rate mission readiness and action orchestration; no perception algorithms."""
+import time
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException
-from rclpy.qos import qos_profile_sensor_data
-from std_msgs.msg import String, Empty
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, DurabilityPolicy
+from std_msgs.msg import String, Empty, Bool
+from std_srvs.srv import Trigger
 from sensor_msgs.msg import PointCloud2
 from flight_interfaces.msg import VehicleState
 from flight_interfaces.action import NavigateToPose
-from .state_machine import MissionMachine
+from .state_machine import MissionMachine, MissionState
+from .landing import LandingCoordinator, UnavailableLandingController
 
 class MissionManager(Node):
     def __init__(self) -> None:
@@ -17,6 +20,16 @@ class MissionManager(Node):
         if self.get_parameter("hardware_output_enabled").value:
             raise RuntimeError("mission manager cannot enable physical hardware output")
         self.machine = MissionMachine()
+        self.inhibit = self.create_publisher(Bool, "mission/navigation_inhibited",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        self.landing_status = self.create_publisher(String, "mission/landing_status", 10)
+        self.land_notice = self.create_publisher(Empty, "mission/navigation_stop", 10)
+        self.landing = LandingCoordinator(UnavailableLandingController(), self.inhibit_navigation)
+        # Local Pi services exist regardless of navigation/laptop/gesture state.
+        self.create_service(Trigger, "mission/land", self.land)
+        self.create_service(Trigger, "mission/disarm", self.disarm)
+        self.create_service(Trigger, "mission/prepare_shutdown", self.prepare_shutdown)
+        self.create_subscription(Empty, "mission/land_request", self.land_topic, 10)
         self.declare_parameter("submit_navigation_goal", False)
         self.declare_parameter("goal_x", 4.0)
         self.declare_parameter("goal_y", 0.0)
@@ -42,8 +55,23 @@ class MissionManager(Node):
             self.map_stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
 
     def tick(self):
+        if self.landing.navigation_inhibited:
+            try:
+                feedback = self.landing.controller.feedback()
+                if feedback is not None:
+                    self.landing.observe(feedback, time.monotonic())
+            except Exception:
+                self.landing._fail("landing feedback transport failure")
+        self.landing.tick(time.monotonic())
+        if self.landing.navigation_inhibited:
+            self.machine.navigation_inhibited = True
+            self.machine.state = MissionState(self.landing.state.value)
+            self.machine.detail = self.landing.detail
+            msg = Bool(); msg.data = True; self.inhibit.publish(msg)
+        status = String(); status.data = f"{self.landing.state.value}:{self.landing.detail}"
+        self.landing_status.publish(status)
         self.publish_status()
-        if not self.executing or self.sent:
+        if self.landing.navigation_inhibited or not self.executing or self.sent:
             return
         now = self.get_clock().now().nanoseconds * 1e-9
         if not (self.state_valid and 0 <= now-self.state_stamp < .5 and 0 <= now-self.map_stamp < .5 and self.client.server_is_ready()):
@@ -62,6 +90,10 @@ class MissionManager(Node):
 
     def accepted(self, future):
         self.goal_handle = future.result()
+        if self.landing.navigation_inhibited:
+            if self.goal_handle.accepted:
+                self.goal_handle.cancel_goal_async()
+            return
         if not self.goal_handle.accepted:
             self.machine.fail("navigation goal rejected")
             return
@@ -69,6 +101,8 @@ class MissionManager(Node):
         self.goal_handle.get_result_async().add_done_callback(self.finished)
 
     def finished(self, future):
+        if self.landing.navigation_inhibited:
+            return
         result = future.result().result
         if result.success:
             self.machine.complete()
@@ -79,6 +113,35 @@ class MissionManager(Node):
         if self.goal_handle:
             self.goal_handle.cancel_goal_async()
             self.machine.cancel()
+
+    def inhibit_navigation(self):
+        self.machine.navigation_inhibited = True
+        msg = Bool(); msg.data = True; self.inhibit.publish(msg)
+        # Also reaches the server directly; no dependence on this client's handle.
+        self.land_notice.publish(Empty())
+        if self.goal_handle and self.goal_handle.accepted:
+            self.goal_handle.cancel_goal_async()
+
+    def land(self, _, response):
+        response.success = self.landing.request_land(time.monotonic())
+        response.message = f"{self.landing.state.value}: {self.landing.detail}"
+        self.tick()
+        return response
+
+    def land_topic(self, _):
+        self.land(None, Trigger.Response())
+
+    def disarm(self, _, response):
+        response.success = self.landing.request_disarm(time.monotonic())
+        response.message = self.landing.detail if response.success else "disarm denied: fresh authoritative landed state and verified controller adapter required"
+        return response
+
+    def prepare_shutdown(self, _, response):
+        response.success = self.landing.shutdown_ready(time.monotonic())
+        response.message = ("disarming confirmed; operator may follow the supervised power-down procedure"
+                            if response.success else "shutdown denied: confirmed landed and disarmed controller state required")
+        # This is an interlock query, never an OS shutdown or controller disconnect.
+        return response
 
     def publish_status(self) -> None:
         msg = String(); msg.data = f"{self.machine.state.value}:{self.machine.detail}"; self.publisher.publish(msg)

@@ -30,9 +30,11 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
         "control/acceleration", rclcpp::QoS(1).best_effort(),
         [this](flight_interfaces::msg::ControlCommand::SharedPtr m) {
           auto sample = robotics::control::CommandSample{
-              rclcpp::Time(m->header.stamp).seconds(), m->trajectory_id,
+              rclcpp::Time(m->header.stamp).seconds(),
+              m->trajectory_id,
               {m->acceleration.x, m->acceleration.y, m->acceleration.z},
-              m->braking, m->header.frame_id};
+              m->braking,
+              m->header.frame_id};
           last_command_error_ = gate_.check_common(sample, now().seconds());
           if (last_command_error_.empty()) {
             if (sample.stamp <= last_seen_command_stamp_)
@@ -48,8 +50,9 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
         [this](flight_interfaces::msg::VehicleState::SharedPtr m) {
           const auto finite = [](double x) { return std::isfinite(x); };
           health_.estimate_healthy = m->valid && !m->ground_truth && m->header.frame_id == "map" &&
-              finite(m->position.x) && finite(m->position.y) && finite(m->position.z) &&
-              finite(m->velocity.x) && finite(m->velocity.y) && finite(m->velocity.z);
+                                     finite(m->position.x) && finite(m->position.y) &&
+                                     finite(m->position.z) && finite(m->velocity.x) &&
+                                     finite(m->velocity.y) && finite(m->velocity.z);
           health_.estimate_stamp = rclcpp::Time(m->header.stamp).seconds();
         });
     trajectory_ = create_subscription<flight_interfaces::msg::TimedTrajectory>(
@@ -79,17 +82,17 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
         "flight_controller/status", 10,
         [this](flight_interfaces::msg::FlightControllerStatus::SharedPtr m) {
           health_.controller_connected = m->connected;
-          health_.telemetry_stamp = rclcpp::Time(m->stamp).seconds();
         });
     telemetry_ = create_subscription<flight_interfaces::msg::MspRawTelemetry>(
         "flight_controller/raw_telemetry", 10,
         [this](flight_interfaces::msg::MspRawTelemetry::SharedPtr m) {
           health_.telemetry_valid = m->ident_available && m->status_available;
-          health_.telemetry_stamp = rclcpp::Time(m->stamp).seconds();
+          health_.telemetry_stamp = rclcpp::Time(m->poll_started).seconds();
         });
     diagnostics_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
     timer_ = create_wall_timer(std::chrono::seconds(1), [this] { report(); });
   }
+
  private:
   void report() {
     health_.operator_authorized = get_parameter("operator_authorized").as_bool();
@@ -98,11 +101,13 @@ class PhysicalCommandGateNode final : public rclcpp::Node {
     health_.protocol_verified = false;
     health_.configuration_verified = false;
     health_.operating_mode_known = false;
-    std::string reason = last_command_ ?
-        (last_command_error_.empty() ? gate_.check_physical(*last_command_, now().seconds(), health_)
-                                     : last_command_error_)
-        : "no command received";
-    if (reason.empty()) reason = "physical encoding and transmission unavailable";
+    std::string reason = last_command_
+                             ? (last_command_error_.empty()
+                                    ? gate_.check_physical(*last_command_, now().seconds(), health_)
+                                    : last_command_error_)
+                             : "no command received";
+    if (reason.empty())
+      reason = "physical encoding and transmission unavailable";
     diagnostic_msgs::msg::DiagnosticArray array;
     array.header.stamp = now();
     diagnostic_msgs::msg::DiagnosticStatus status;

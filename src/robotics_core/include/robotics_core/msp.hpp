@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace robotics::msp {
@@ -13,6 +14,16 @@ struct Packet {
   bool error{};
 };
 constexpr std::uint8_t kIdent = 100;
+constexpr std::uint8_t kApiVersion = 1;
+constexpr std::uint8_t kFcVariant = 2;
+constexpr std::uint8_t kFcVersion = 3;
+constexpr std::uint8_t kBoardInfo = 4;
+struct ApiVersion {
+  std::uint8_t protocol{}, major{}, minor{};
+};
+std::optional<ApiVersion> decode_api_version(const Packet&);
+std::optional<std::string> decode_ascii_prefix(const Packet&, std::uint8_t command,
+                                               std::size_t length, bool exact);
 constexpr std::uint8_t kStatus = 101;
 constexpr std::uint8_t kRawImu = 102;
 constexpr std::uint8_t kRc = 105;
@@ -41,7 +52,9 @@ std::vector<std::uint8_t> encode_raw_rc(
 class Parser {
  public:
   std::optional<Packet> push(std::uint8_t byte);
-  void discard_partial() noexcept { reset(); }
+  void discard_partial() noexcept {
+    reset();
+  }
   std::size_t invalid_packets() const noexcept {
     return invalid_packets_;
   }

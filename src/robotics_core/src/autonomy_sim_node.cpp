@@ -13,6 +13,8 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/empty.hpp>
 #include <std_msgs/msg/string.hpp>
 
 #include "flight_interfaces/action/navigate_to_pose.hpp"
@@ -65,8 +67,8 @@ class SimulatorNode final : public rclcpp::Node {
   void accept_command(const flight_interfaces::msg::ControlCommand& m) {
     const auto stamp = rclcpp::Time(m.header.stamp);
     const auto acceleration = vec(m.acceleration);
-    robotics::control::CommandSample sample{stamp.seconds(), m.trajectory_id,
-                                            acceleration, m.braking, m.header.frame_id};
+    robotics::control::CommandSample sample{stamp.seconds(), m.trajectory_id, acceleration,
+                                            m.braking, m.header.frame_id};
     std::lock_guard<std::mutex> l(mu_);
     if (!gate_.check_common(sample, now().seconds()).empty()) {
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
@@ -180,6 +182,18 @@ class AutonomyNode final : public rclcpp::Node {
         "planning/trajectory", rclcpp::QoS(1).transient_local().reliable(),
         [this](flight_interfaces::msg::TimedTrajectory::SharedPtr m) { on_trajectory(*m); });
     status_ = create_publisher<std_msgs::msg::String>("mission/status", 10);
+    land_request_ = create_subscription<std_msgs::msg::Empty>(
+        "mission/land_request", 10,
+        [this](std_msgs::msg::Empty::SharedPtr) { inhibit_navigation(); });
+    navigation_stop_ = create_subscription<std_msgs::msg::Empty>(
+        "mission/navigation_stop", 10,
+        [this](std_msgs::msg::Empty::SharedPtr) { inhibit_navigation(); });
+    navigation_inhibit_ = create_subscription<std_msgs::msg::Bool>(
+        "mission/navigation_inhibited", rclcpp::QoS(1).transient_local().reliable(),
+        [this](std_msgs::msg::Bool::SharedPtr m) {
+          if (m->data)
+            inhibit_navigation();
+        });
     planner_status_ =
         create_publisher<flight_interfaces::msg::PlannerStatus>("planning/status", 10);
     estimate_ = create_subscription<flight_interfaces::msg::VehicleState>(
@@ -197,7 +211,7 @@ class AutonomyNode final : public rclcpp::Node {
         [this](const rclcpp_action::GoalUUID&, std::shared_ptr<const Navigate::Goal> g) {
           const auto& p = g->goal.pose.position;
           const bool accepted =
-              !active_goal_ && !goal_reserved_ &&
+              !landing_latched_ && !active_goal_ && !goal_reserved_ &&
               (g->goal.header.frame_id.empty() || g->goal.header.frame_id == "map") &&
               std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
           if (accepted)
@@ -214,6 +228,10 @@ class AutonomyNode final : public rclcpp::Node {
           goal_ = {p.x, p.y, p.z};
           active_goal_ = h;
           goal_reserved_ = false;
+          if (landing_latched_) {
+            finish_action(false, "navigation cancelled by latched LAND request");
+            return;
+          }
           cancel_requested_ = false;
           trajectory_.reset();
           attempted_ = false;
@@ -222,6 +240,19 @@ class AutonomyNode final : public rclcpp::Node {
   }
 
  private:
+  void inhibit_navigation() {
+    // Permanent for this process lifetime. No reset command can override LAND.
+    // No descent, throttle or physical command is synthesized here.
+    landing_latched_ = true;
+    attempted_ = true;
+    trajectory_.reset();
+    {
+      std::lock_guard<std::mutex> lock(reference_mu_);
+      reference_trajectory_.reset();
+    }
+    finish_action(false, "navigation cancelled by latched LAND request");
+    publish_status("land_requested:navigation inhibited; controller landing confirmation required");
+  }
   void configure_map() {
     if (scenario_ == "static") {
       map_.fill_box({1.5, -.6, 0}, {2.5, .6, 2.5});
@@ -454,6 +485,8 @@ class AutonomyNode final : public rclcpp::Node {
             blend(vec(a.acceleration), vec(b.acceleration)), stamp};
   }
   void control() {
+    if (landing_latched_)
+      return;
     nav::PlanningState s;
     bool valid;
     {
@@ -725,6 +758,7 @@ class AutonomyNode final : public rclcpp::Node {
   bool state_valid_{}, attempted_{}, dynamic_added_{}, awaiting_replan_control_{},
       cancel_requested_{}, use_perception_map_{}, map_changed_{}, map_corrupt_{};
   bool goal_reserved_{};
+  bool landing_latched_{};
   std::size_t replans_{}, tracking_samples_{}, map_updates_{};
   std::uint64_t trajectory_id_{};
   double last_map_stamp_{}, last_map_ms_{}, last_planning_ms_{}, last_optimization_ms_{},
@@ -745,6 +779,8 @@ class AutonomyNode final : public rclcpp::Node {
   rclcpp::Publisher<flight_interfaces::msg::PlannerStatus>::SharedPtr planner_status_;
   rclcpp::Subscription<flight_interfaces::msg::VehicleState>::SharedPtr estimate_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_;
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr land_request_, navigation_stop_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr navigation_inhibit_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr occupancy_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;

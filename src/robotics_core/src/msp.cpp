@@ -3,6 +3,21 @@
 #include <stdexcept>
 
 namespace robotics::msp {
+std::optional<ApiVersion> decode_api_version(const Packet& p) {
+  if (p.error || p.command != kApiVersion || p.payload.size() != 3)
+    return std::nullopt;
+  return ApiVersion{p.payload[0], p.payload[1], p.payload[2]};
+}
+std::optional<std::string> decode_ascii_prefix(const Packet& p, std::uint8_t command,
+                                               std::size_t length, bool exact) {
+  if (p.error || p.command != command || p.payload.size() < length ||
+      (exact && p.payload.size() != length) || length == 0)
+    return std::nullopt;
+  for (std::size_t i = 0; i < length; ++i)
+    if (p.payload[i] < 32 || p.payload[i] > 126)
+      return std::nullopt;
+  return std::string(p.payload.begin(), p.payload.begin() + length);
+}
 namespace {
 std::uint16_t u16(const std::vector<std::uint8_t>& p, std::size_t at) {
   return std::uint16_t(p[at]) | (std::uint16_t(p[at + 1]) << 8);
@@ -10,18 +25,21 @@ std::uint16_t u16(const std::vector<std::uint8_t>& p, std::size_t at) {
 std::uint32_t u32(const std::vector<std::uint8_t>& p, std::size_t at) {
   return std::uint32_t(u16(p, at)) | (std::uint32_t(u16(p, at + 2)) << 16);
 }
-}
+}  // namespace
 std::optional<Ident> decode_ident(const Packet& p) {
-  if (p.error || p.command != kIdent || p.payload.size() != 7) return std::nullopt;
+  if (p.error || p.command != kIdent || p.payload.size() != 7)
+    return std::nullopt;
   return Ident{p.payload[0], p.payload[1], p.payload[2], u32(p.payload, 3)};
 }
 std::optional<Status> decode_status(const Packet& p) {
-  if (p.error || p.command != kStatus || p.payload.size() != 11) return std::nullopt;
-  return Status{u16(p.payload, 0), u16(p.payload, 2), u16(p.payload, 4),
-                u32(p.payload, 6), p.payload[10]};
+  if (p.error || p.command != kStatus || p.payload.size() != 11)
+    return std::nullopt;
+  return Status{u16(p.payload, 0), u16(p.payload, 2), u16(p.payload, 4), u32(p.payload, 6),
+                p.payload[10]};
 }
 std::optional<Analog> decode_analog(const Packet& p) {
-  if (p.error || p.command != kAnalog || p.payload.size() != 7) return std::nullopt;
+  if (p.error || p.command != kAnalog || p.payload.size() != 7)
+    return std::nullopt;
   return Analog{p.payload[0], u16(p.payload, 1), u16(p.payload, 3), u16(p.payload, 5)};
 }
 std::vector<std::uint8_t> encode(const std::uint8_t command,

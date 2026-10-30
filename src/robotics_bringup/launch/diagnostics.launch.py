@@ -19,4 +19,5 @@ def generate_launch_description():
     return LaunchDescription([
         hardware, activate, configure,
         Node(package="flight_mission", executable="mission_manager", name="mission_manager",
-             parameters=[params], output="screen")])
+             parameters=[params], output="screen"),
+        Node(package="flight_mission", executable="preflight_status", output="screen")])

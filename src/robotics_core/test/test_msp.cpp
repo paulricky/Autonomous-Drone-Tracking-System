@@ -1,6 +1,25 @@
 #include <gtest/gtest.h>
 
 #include "robotics_core/msp.hpp"
+
+TEST(Msp, ReadOnlyApiIdentityLayoutsRejectMalformedReplies) {
+  using namespace robotics::msp;
+  const auto api = decode_api_version({kApiVersion, {0, 1, 46}, false});
+  ASSERT_TRUE(api);
+  EXPECT_EQ(api->major, 1);
+  EXPECT_EQ(api->minor, 46);
+  EXPECT_FALSE(decode_api_version({kApiVersion, {0, 1}, false}));
+  EXPECT_FALSE(decode_api_version({kApiVersion, {0, 1, 46}, true}));
+  EXPECT_FALSE(decode_api_version({kIdent, {0, 1, 46}, false}));
+  EXPECT_EQ(decode_ascii_prefix({kFcVariant, {'B', 'T', 'F', 'L'}, false}, kFcVariant, 4, true),
+            "BTFL");
+  EXPECT_FALSE(decode_ascii_prefix({kFcVariant, {'B', 0, 'F', 'L'}, false}, kFcVariant, 4, true));
+  EXPECT_FALSE(
+      decode_ascii_prefix({kFcVariant, {'B', 'T', 'F', 'L', 0}, false}, kFcVariant, 4, true));
+  EXPECT_EQ(
+      decode_ascii_prefix({kBoardInfo, {'S', '4', '1', '1', 0, 0}, false}, kBoardInfo, 4, false),
+      "S411");
+}
 TEST(Msp, EncodesKnownRawRcPacket) {
   const auto bytes = robotics::msp::encode_raw_rc({1500, 1500, 1500, 1000});
   ASSERT_EQ(bytes.size(), 14u);
@@ -33,19 +52,22 @@ TEST(Msp, DecodesReadOnlyLegacyFieldsAndRejectsErrors) {
   bytes[2] = '>';
   std::optional<robotics::msp::Packet> packet;
   for (auto byte : bytes)
-    if (auto item = parser.push(byte)) packet = item;
+    if (auto item = parser.push(byte))
+      packet = item;
   ASSERT_TRUE(packet);
   auto ident = robotics::msp::decode_ident(*packet);
   ASSERT_TRUE(ident);
   EXPECT_EQ(ident->capability, 0x07060504u);
   bytes[2] = '!';
   for (auto byte : bytes)
-    if (auto item = parser.push(byte)) packet = item;
+    if (auto item = parser.push(byte))
+      packet = item;
   ASSERT_TRUE(packet->error);
   EXPECT_FALSE(robotics::msp::decode_ident(*packet));
   bytes[2] = '<';
   packet.reset();
   for (auto byte : bytes)
-    if (auto item = parser.push(byte)) packet = item;
+    if (auto item = parser.push(byte))
+      packet = item;
   EXPECT_FALSE(packet);
 }

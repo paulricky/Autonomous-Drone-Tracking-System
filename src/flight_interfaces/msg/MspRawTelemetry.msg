@@ -1,6 +1,13 @@
 # Raw MSP v1 fields as returned by a candidate legacy controller.
 # No SI conversion, axis mapping, covariance, or sensor validity is implied.
 builtin_interfaces/Time stamp
+builtin_interfaces/Time poll_started
+# Host poll span, NOT the age or acquisition timestamp of controller IMU data.
+float64 poll_duration_s
+string imu_metadata
+# Preserve extended/unknown layouts for firmware-specific offline inspection.
+uint8[] status_payload
+uint8[] analog_payload
 bool ident_available
 uint8 firmware_version
 uint8 vehicle_type

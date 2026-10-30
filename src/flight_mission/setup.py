@@ -6,4 +6,5 @@ setup(name=package_name, version="0.2.0", packages=find_packages(),
       install_requires=["setuptools"], tests_require=["pytest"], zip_safe=True,
       maintainer="Autonomous Drone Navigation maintainers", maintainer_email="maintainer@example.com",
       description="Low-rate mission coordination and safety state machine", license="MIT",
-      entry_points={"console_scripts": ["mission_manager = flight_mission.manager:main"]})
+      entry_points={"console_scripts": ["mission_manager = flight_mission.manager:main",
+                                        "preflight_status = flight_mission.preflight:main"]})
