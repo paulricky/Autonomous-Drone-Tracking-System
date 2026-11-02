@@ -119,7 +119,7 @@ void VoxelMap::integrate_ray(const Vec3& origin, const Vec3& endpoint, double ma
       set_index(idx, Occupancy::kOccupied);
   }
 }
-VoxelMap VoxelMap::inflated(double radius) const {
+VoxelMap VoxelMap::inflated(double radius, bool inflate_unknown) const {
   if (radius < 0)
     throw std::invalid_argument("negative inflation radius");
   VoxelMap out = *this;
@@ -127,7 +127,8 @@ VoxelMap VoxelMap::inflated(double radius) const {
   for (std::size_t x = 0; x < shape_[0]; ++x)
     for (std::size_t y = 0; y < shape_[1]; ++y)
       for (std::size_t z = 0; z < shape_[2]; ++z)
-        if (at({x, y, z}) == Occupancy::kOccupied)
+        if (at({x, y, z}) == Occupancy::kOccupied ||
+            (inflate_unknown && at({x, y, z}) == Occupancy::kUnknown))
           for (int dx = -cells; dx <= cells; ++dx)
             for (int dy = -cells; dy <= cells; ++dy)
               for (int dz = -cells; dz <= cells; ++dz) {

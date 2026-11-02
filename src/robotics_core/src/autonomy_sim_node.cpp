@@ -48,6 +48,7 @@ static void set(geometry_msgs::msg::Point& v, const nav::Vec3& a) {
   v.z = a[2];
 }
 
+#ifndef ROBOTICS_PHYSICAL
 class SimulatorNode final : public rclcpp::Node {
  public:
   SimulatorNode()
@@ -120,6 +121,8 @@ class SimulatorNode final : public rclcpp::Node {
   rclcpp::TimerBase::SharedPtr timer_;
 };
 
+#endif
+
 class AutonomyNode final : public rclcpp::Node {
   using Navigate = flight_interfaces::action::NavigateToPose;
   using GoalHandle = rclcpp_action::ServerGoalHandle<Navigate>;
@@ -149,19 +152,71 @@ class AutonomyNode final : public rclcpp::Node {
     declare_parameter("goal_velocity_tolerance", .55);
     declare_parameter("trajectory_expiration_grace", 2.0);
     declare_parameter("replan_position_error", 1.0);
+    declare_parameter("tracking_kp", 4.0);
+    declare_parameter("tracking_kd", 2.8);
     tracker_ = robotics::control::TrajectoryTracker(
-        {4, 2.8, 2, 2, get_parameter("state_timeout").as_double()});
+        {get_parameter("tracking_kp").as_double(), get_parameter("tracking_kd").as_double(),
+         get_parameter("max_acceleration").as_double(), 2,
+         get_parameter("state_timeout").as_double()});
     declare_parameter("hardware_output_enabled", false);
     declare_parameter("simulate_vehicle", true);
     declare_parameter("system_mode", "simulation");
     if (get_parameter("hardware_output_enabled").as_bool())
       throw std::runtime_error("physical hardware output is unavailable in this build");
     const auto system_mode = get_parameter("system_mode").as_string();
-    if (system_mode != "simulation" && system_mode != "hardware_read_only")
+    if (system_mode != "simulation" && system_mode != "hardware_read_only" &&
+        system_mode != "physical")
       throw std::invalid_argument("unsupported system mode");
-    if (system_mode == "hardware_read_only" &&
+    if (system_mode != "simulation" &&
         (get_parameter("simulate_vehicle").as_bool() || get_parameter("auto_start").as_bool()))
       throw std::invalid_argument("hardware read-only mode forbids simulator and automatic goals");
+#ifdef ROBOTICS_PHYSICAL
+    if (system_mode != "physical" || !get_parameter("use_perception_map").as_bool() ||
+        get_parameter("unknown_is_free").as_bool())
+      throw std::invalid_argument(
+          "physical navigation requires real perception and unknown-space exclusion");
+#endif
+    declare_parameter("vehicle_clearance_m", .5);
+    declare_parameter("braking_acceleration_mps2", 1.0);
+    declare_parameter("map_observation_lifetime_s", .5);
+    declare_parameter("map_minimum", std::vector<double>{-1, -2, 0});
+    declare_parameter("map_maximum", std::vector<double>{7, 2, 3});
+    auto lo = get_parameter("map_minimum").as_double_array();
+    auto hi = get_parameter("map_maximum").as_double_array();
+    if (lo.size() != 3 || hi.size() != 3 || get_parameter("vehicle_clearance_m").as_double() <= 0 ||
+        get_parameter("braking_acceleration_mps2").as_double() <= 0)
+      throw std::invalid_argument("invalid vehicle envelope or map bounds");
+    map_ = nav::VoxelMap({lo[0], lo[1], lo[2]}, {hi[0], hi[1], hi[2]}, .25, nav::Occupancy::kFree);
+    enable_sub_ = create_subscription<std_msgs::msg::Bool>(
+        "mission/navigation_enabled", 1, [this](std_msgs::msg::Bool::SharedPtr m) {
+          if (!m->data && navigation_enabled_) {
+            trajectory_.reset();
+            attempted_ = true;
+            std::lock_guard<std::mutex> l(reference_mu_);
+            reference_trajectory_.reset();
+          }
+          navigation_enabled_ = m->data;
+        });
+    intent_ = create_subscription<geometry_msgs::msg::Vector3>(
+        "mission/direction", 1, [this](geometry_msgs::msg::Vector3::SharedPtr m) {
+          const nav::Vec3 d{m->x, m->y, m->z};
+          if (!navigation_enabled_ || landing_latched_ || !nav::finite(d) ||
+              std::abs(nav::norm(d) - 1) > 0.01)
+            return;
+          std::lock_guard<std::mutex> l(mu_);
+          if (!state_valid_ || now().seconds() - state_.stamp > .25)
+            return;
+          if (now().seconds() - last_intent_ < .5)
+            return;
+          if (trajectory_ && nav::dot(d, last_direction_) > std::cos(.2))
+            return;
+          goal_ = nav::add(state_.position, nav::mul(d, declare_lookahead_));
+          last_direction_ = d;
+          last_intent_ = now().seconds();
+          trajectory_.reset();
+          attempted_ = false;
+        });
+    declare_lookahead_ = declare_parameter("lookahead_m", 1.0);
     scenario_ = get_parameter("scenario").as_string();
     use_perception_map_ = get_parameter("use_perception_map").as_bool();
     goal_ = {get_parameter("goal_x").as_double(), get_parameter("goal_y").as_double(),
@@ -253,6 +308,11 @@ class AutonomyNode final : public rclcpp::Node {
     finish_action(false, "navigation cancelled by latched LAND request");
     publish_status("land_requested:navigation inhibited; controller landing confirmation required");
   }
+  double clearance() const {
+    return get_parameter("vehicle_clearance_m").as_double() +
+           std::pow(get_parameter("max_velocity").as_double(), 2) /
+               (2 * get_parameter("braking_acceleration_mps2").as_double());
+  }
   void configure_map() {
     if (scenario_ == "static") {
       map_.fill_box({1.5, -.6, 0}, {2.5, .6, 2.5});
@@ -304,6 +364,10 @@ class AutonomyNode final : public rclcpp::Node {
       }
       if (points.empty())
         return;
+#ifdef ROBOTICS_PHYSICAL
+      // Expire old free-space evidence, including regions now outside the stereo FOV.
+      map_.fill(nav::Occupancy::kUnknown);
+#endif
       map_.integrate_cloud(sensor_origin, points, 8);
       ++map_updates_;
       map_changed_ = true;
@@ -351,7 +415,10 @@ class AutonomyNode final : public rclcpp::Node {
     std::lock_guard<std::mutex> map_lock(map_mu_);
     // Plan with additional reserve for later stereo observations; active safety
     // validation retains the 0.25 m physical envelope and never ignores collisions.
-    nav::VoxelMap collision_map = use_perception_map_ ? map_.inflated(.5) : map_;
+    nav::VoxelMap collision_map =
+        use_perception_map_
+            ? map_.inflated(clearance(), get_parameter("system_mode").as_string() == "physical")
+            : map_;
     RCLCPP_INFO(get_logger(),
                 "planning state=(%.3f,%.3f,%.3f) velocity=(%.3f,%.3f,%.3f) occupied=%zu",
                 start.position[0], start.position[1], start.position[2], start.velocity[0],
@@ -387,7 +454,7 @@ class AutonomyNode final : public rclcpp::Node {
       guide.push_back(goal_);
     while (guide.size() < 4)
       guide.insert(guide.end() - 1, nav::mul(nav::add(guide[guide.size() - 2], guide.back()), .5));
-    const nav::DynamicLimits limits{cfg.max_velocity, 2};
+    const nav::DynamicLimits limits{cfg.max_velocity, cfg.max_acceleration};
     auto local =
         nav::EgoOptimizer().optimize(guide, collision_map, std::max(5., global.cost * 1.8), limits);
     last_optimization_ms_ = local.optimization_time_s * 1000;
@@ -516,7 +583,9 @@ class AutonomyNode final : public rclcpp::Node {
     }
     if (use_perception_map_ &&
         map_updates_ < std::size_t(get_parameter("minimum_map_updates").as_int())) {
-      if (active_goal_ && last_map_stamp_ > 0 && now().seconds() - last_map_stamp_ > 1.0) {
+      if (active_goal_ && last_map_stamp_ > 0 &&
+          now().seconds() - last_map_stamp_ >
+              get_parameter("map_observation_lifetime_s").as_double()) {
         brake();
         publish_status("failed:perception map unavailable");
         finish_action(false, "perception map unavailable");
@@ -527,7 +596,9 @@ class AutonomyNode final : public rclcpp::Node {
       return;
     }
     if (!valid || now().seconds() - s.stamp > .5 ||
-        (use_perception_map_ && last_map_stamp_ > 0 && now().seconds() - last_map_stamp_ > 1.0)) {
+        (use_perception_map_ && last_map_stamp_ > 0 &&
+         now().seconds() - last_map_stamp_ >
+             get_parameter("map_observation_lifetime_s").as_double())) {
       if (trajectory_ || active_goal_) {
         brake();
         publish_status("failed:localization or map unavailable");
@@ -540,7 +611,7 @@ class AutonomyNode final : public rclcpp::Node {
     if (!trajectory_) {
       if (!attempted_) {
         attempted_ = true;
-        if (!plan(s) && !active_goal_)
+        if (!plan(s) && !active_goal_ && get_parameter("system_mode").as_string() == "simulation")
           rclcpp::shutdown();
       }
       return;
@@ -620,7 +691,7 @@ class AutonomyNode final : public rclcpp::Node {
       brake();
       trajectory_.reset();
       ++replans_;
-      if (!plan(s) && !active_goal_)
+      if (!plan(s) && !active_goal_ && get_parameter("system_mode").as_string() == "simulation")
         rclcpp::shutdown();
       return;
     }
@@ -633,7 +704,7 @@ class AutonomyNode final : public rclcpp::Node {
       publish_status("failed:" + tracker_.failure_reason());
       finish_action(false, tracker_.failure_reason());
       brake();
-      if (!active_goal_)
+      if (!active_goal_ && get_parameter("system_mode").as_string() == "simulation")
         rclcpp::shutdown();
       return;
     }
@@ -676,7 +747,7 @@ class AutonomyNode final : public rclcpp::Node {
       finish_action(true, "goal reached");
       trajectory_.reset();
       attempted_ = true;
-      if (!active_goal_)
+      if (!active_goal_ && get_parameter("system_mode").as_string() == "simulation")
         rclcpp::shutdown();
     }
   }
@@ -727,7 +798,10 @@ class AutonomyNode final : public rclcpp::Node {
   }
   bool active_unsafe(double elapsed) {
     std::lock_guard<std::mutex> map_lock(map_mu_);
-    auto collision_map = use_perception_map_ ? map_.inflated(.25) : map_;
+    auto collision_map =
+        use_perception_map_
+            ? map_.inflated(clearance(), get_parameter("system_mode").as_string() == "physical")
+            : map_;
     for (double t = std::max(0., elapsed); t <= trajectory_->duration(); t += .03)
       if (collision_map.occupied(trajectory_->position(t)))
         return true;
@@ -749,6 +823,11 @@ class AutonomyNode final : public rclcpp::Node {
     set(m.acceleration, a);
     command_->publish(m);
   }
+  rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr intent_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_sub_;
+  bool navigation_enabled_{};
+  nav::Vec3 last_direction_{};
+  double last_intent_{}, declare_lookahead_{1};
   nav::VoxelMap map_;
   nav::Vec3 goal_;
   std::string scenario_, last_status_;
@@ -790,11 +869,13 @@ int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto exec = std::make_shared<rclcpp::executors::MultiThreadedExecutor>();
   auto autonomy = std::make_shared<AutonomyNode>();
+#ifndef ROBOTICS_PHYSICAL
   std::shared_ptr<SimulatorNode> simulator;
   if (autonomy->get_parameter("simulate_vehicle").as_bool()) {
     simulator = std::make_shared<SimulatorNode>();
     exec->add_node(simulator);
   }
+#endif
   exec->add_node(autonomy);
   exec->spin();
   rclcpp::shutdown();

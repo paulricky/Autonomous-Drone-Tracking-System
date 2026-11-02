@@ -115,6 +115,9 @@ run_calibration() {
     "$LEFT_CAMERA_DEVICE" "$RIGHT_CAMERA_DEVICE"
 }
 case "${1:-}" in
+  flight)
+    exec python3 "$script_dir/run_drone.py" --config "${DRONE_CONFIG:-$data/config/physical_flight.yaml}"
+    ;;
   build)
     build_image
     ;;
@@ -183,7 +186,7 @@ case "${1:-}" in
     "$script_dir/pi_deploy.sh" start
     ;;
   *)
-    echo "usage: $0 {build|start|stop|logs|shell|bench-shell|preflight|capture WIDTH HEIGHT FPS DELTA_MS COUNT [NAME] [FOURCC]|calibrate NAME COLUMNS ROWS SQUARE_M|camera|telemetry|sensors|integration|diagnose|update}" >&2
+    echo "usage: $0 {flight|build|start|stop|logs|shell|bench-shell|preflight|capture WIDTH HEIGHT FPS DELTA_MS COUNT [NAME] [FOURCC]|calibrate NAME COLUMNS ROWS SQUARE_M|camera|telemetry|sensors|integration|diagnose|update}" >&2
     exit 2
     ;;
 esac

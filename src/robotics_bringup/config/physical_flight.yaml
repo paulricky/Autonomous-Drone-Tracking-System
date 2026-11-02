@@ -1,0 +1,77 @@
+# Commission using measured values; zero limits block flight.
+uvc_stereo:
+  ros__parameters:
+    left_device: /dev/v4l/by-id/LEFT_OV9281_UNCONFIGURED
+    right_device: /dev/v4l/by-id/RIGHT_OV9281_UNCONFIGURED
+    calibration_file: /var/lib/robotics/calibration/stereo_UNCONFIGURED.yaml
+    width: 640
+    height: 480
+    fps: 20.0
+    timestamp_policy: host_monotonic_receipt_ros_mapped
+    left_frame_id: left_camera_optical_frame
+    right_frame_id: right_camera_optical_frame
+    pixel_format: ''
+    exposure: -1.0
+    gain: -1.0
+stereo_perception:
+  ros__parameters:
+    mode: external
+    calibration_file: /var/lib/robotics/calibration/stereo_UNCONFIGURED.yaml
+    max_pair_delta_s: 0.005
+    image_max_age_s: 0.25
+    expected_left_frame_id: left_camera_optical_frame
+    expected_right_frame_id: right_camera_optical_frame
+    body_from_left_optical_translation:
+    - 0.0
+    - 0.0
+    - 0.0
+    body_from_left_optical_rotation_vector:
+    - 0.0
+    - 0.0
+    - 0.0
+    mounting_verified: false
+    initial_body_position:
+    - 0.0
+    - 0.0
+    - 0.0
+autonomy_pipeline:
+  ros__parameters:
+    system_mode: physical
+    simulate_vehicle: false
+    auto_start: false
+    state_topic: perception/state_estimate
+    use_perception_map: true
+    unknown_is_free: false
+    hardware_output_enabled: false
+    vehicle_clearance_m: 0.0
+    braking_acceleration_mps2: 0.0
+    max_velocity: 0.0
+    max_acceleration: 0.0
+    lookahead_m: 0.0
+    planning_timeout: 0.1
+    map_observation_lifetime_s: 0.3
+    tracking_kp: 0.0
+    tracking_kd: 0.0
+deployment:
+  ros__parameters:
+    controller_interface: UNCONFIGURED
+    controller_device: /dev/serial/by-id/CONTROLLER_UNCONFIGURED
+    baud_rate: 0
+    commissioning_record: /var/lib/robotics/config/commissioning.json
+physical_flight_adapter:
+  ros__parameters:
+    controller_uid: UNCONFIGURED
+    firmware_version: 0
+    pilot_enable_channel: -1
+    pilot_enable_min: 0
+    pilot_enable_max: 0
+    max_acceleration_mps2: 0.0
+    verified_parameter_names: []
+    verified_parameter_values: []
+    vision_pose_covariance_diagonal: []
+operator_receiver:
+  ros__parameters:
+    key_file: /var/lib/robotics/config/operator.key
+    bind_address: 0.0.0.0
+    port: 7447
+    reference_frame_id: UNCONFIGURED

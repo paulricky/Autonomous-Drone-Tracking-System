@@ -6,4 +6,4 @@
 <exec_depend>geometry_msgs</exec_depend><exec_depend>flight_interfaces</exec_depend>
 <exec_depend>sensor_msgs</exec_depend>
 <exec_depend>std_srvs</exec_depend><exec_depend>diagnostic_msgs</exec_depend><exec_depend>nav_msgs</exec_depend>
-<test_depend>python3-pytest</test_depend><test_depend>robotics_core</test_depend><export><build_type>ament_python</build_type></export></package>
+<test_depend>python3-pytest</test_depend><test_depend>robotics_core</test_depend><export><build_type>ament_python</build_type></export><exec_depend>robotics_tools</exec_depend></package>

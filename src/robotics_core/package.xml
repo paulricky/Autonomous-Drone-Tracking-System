@@ -11,4 +11,5 @@
   <depend>tf2_ros</depend>
   <test_depend>ament_cmake_gtest</test_depend><test_depend>ament_lint_auto</test_depend>
   <export><build_type>ament_cmake</build_type></export>
+<depend>mavros_msgs</depend><depend>rcl_interfaces</depend><depend>nav_msgs</depend><depend>geometry_msgs</depend>
 </package>

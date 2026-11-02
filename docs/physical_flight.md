@@ -1,0 +1,62 @@
+# Physical flight application
+
+This implementation adds a PX4/MAVROS execution path. It has **not been commissioned on a vehicle**. The recovered Duckiedrone code proves only raw MSP RC transmission. It does not prove supported autonomous takeoff, hold, landing, landed detection, thrust calibration or independent recovery for the existing board. No MSP actuator output has been enabled. A compatible PX4 controller, or a separately verified firmware adapter, is necessary.
+
+## Install and configure
+
+On the Pi 5 use Ubuntu 24.04 ARM64 and ROS 2 Jazzy. Install workspace dependencies with rosdep, including `mavros` and `mavros_msgs`, then build with `colcon build --base-paths src`. Install the MAVROS GeographicLib datasets using its distribution-provided `install_geographiclib_datasets.sh` helper. Source `/opt/ros/jazzy/setup.bash` and `install/setup.bash` in the onboard Python environment. The Docker build also installs MAVROS through rosdep; `flight` currently runs the native host installation.
+
+Copy `src/robotics_bringup/config/physical_flight.yaml` to `/var/lib/robotics/config/physical_flight.yaml`. Replace the blocking zero limits and UNCONFIGURED identities using measured information. This is distinct from the existing read-only `hardware.yaml`. Persistent camera and serial paths must already resolve; use `scripts/pi_diagnostics.sh` to inventory them. Camera discovery does not infer which camera is left.
+
+Generate a shared random key, store it in the configured Pi key file and `~/.config/drone/operator.key` on the Mac, and use mode 0600. For example `python3 -c 'import secrets; print(secrets.token_hex(32))'` generates suitable key material. Transfer it privately. The UDP protocol authenticates messages but does not encrypt the webcam direction or telemetry. Synchronize both machines' clocks: packets outside a 400 ms window are rejected. Allow UDP 7447 only from the operator network. Onboard launch restricts ROS discovery to localhost by default; use OS/network isolation for the local ROS command bus.
+
+On the Mac install this project with its hand dependency in a Python 3.11 environment: `python3 -m pip install -e '.[hand]'`. Run `python3 scripts/calibrate_pointing_reference.py --frame-id YOUR_REFERENCE_ID`. Physically identify the commissioned map +X, +Y and +Z axes; point a straight index finger along each and capture with 1, 2, 3, then W. Validate the resulting rotation using independent directions throughout the intended workspace. This fits a rotation in MediaPipe landmark-reference coordinates, not a calibrated metric 3D camera model; monocular depth/foreshortening can invalidate intent. Keep the webcam, operator reference, vehicle map and image aspect ratio fixed after calibration. Use the same reference identifier on the Pi. Recalibrate after moving the reference.
+
+## Start and operate
+
+Pi, after sourcing ROS and the built workspace:
+
+```
+python3 scripts/run_drone.py
+```
+
+Equivalent native wrapper: `./scripts/pi_deploy.sh flight`, with `DRONE_CONFIG` pointing to the measured configuration if using another path. Neither command arms or takes off. Missing calibration or commissioning aborts launch with a reason.
+
+Mac, in the hand environment:
+
+```
+python3 scripts/run_hand_control.py --host <PI_IP>
+```
+
+One window owns the keyboard. S establishes the connection and enables hand intent. A separately requests arming. T obtains a short-lived takeoff challenge; Y confirms it within four seconds. Read telemetry feedback before proceeding. Raw network acceptance is never flight confirmation. Space inhibits pointing and requests PX4 AUTO.LOITER. S deliberately re-enables pointing after hold. L inhibits navigation for the process lifetime and requests AUTO.LAND. E has priority and latches emergency recovery; it requests AUTO.LAND only while verified controller identity, failsafe configuration and pilot authorization permit it. It never blindly disarms in the air. D is accepted only after authoritative on-ground feedback. Q requests landing when necessary and waits for ground plus disarmed feedback before closing. After LAND/emergency, deliberate recovery requires a fresh application session on the ground; pointing cannot clear the latch. A pilot/controller departure from OFFBOARD without an intentional software mode change also latches autonomy off.
+
+If the controller does not automatically disarm after landing, press D. Do not rely on closing windows, Ctrl-C, Wi-Fi or application shutdown for manual recovery. The onboard wrapper keeps the ROS application running after a normal shutdown signal until controller feedback confirms ground and disarming. A startup failure before any feedback returns an error rather than claiming readiness.
+
+## Execution and feedback
+
+The physical launch starts UVC acquisition, synchronized/rectified stereo, metric depth, VO, the existing C++ map/kinodynamic A*/B-spline/EGO/PD pipeline, MAVROS, the C++ physical adapter and the authenticated mission receiver. It contains no simulated vehicle process. A sensor/planner failure leaves the controller supervisor alive; missing acceleration references request hold. Missing operator heartbeats latches emergency landing. If the supervisor itself dies, commissioned PX4 offboard and RC loss failsafes remain responsible.
+
+Mac landmarks 5/6/7/8 supply a fitted index axis. Bent or degenerate segments are rejected; filtering and measured R_wc transform the intent. Capture timestamps expire even if inference stalls. A separate process runs MediaPipe while the main thread owns keyboard/display and a separate thread handles transport. Session challenges, HMAC, sequence checks, frame IDs, expiration and acknowledgements protect the command path. Reconnection never enables tracking automatically.
+
+The receiver publishes bounded unit direction intent only with valid authorization and airborne controller feedback. The native planner computes current position + configured lookahead times direction; rate and angle thresholds suppress redundant planning. Stereo rays clear observed voxels and set obstacle endpoints. Physical mode expires previous free-space observations each cloud, inflates both unknown regions and obstacles by configured vehicle clearance plus braking reserve, and checks/replans the actual trajectory. Sparse stereo or unseen space can therefore block all motion: there is deliberately no manufactured free launch bubble or rearward clearance. Two forward cameras cannot establish a complete safe swept volume. Additional verified sensing/visibility coverage may be necessary before useful navigation is possible.
+
+The native tracker supplies bounded **net ENU translational acceleration**, not motor commands. MAVROS converts ENU to NED for SET_POSITION_TARGET_LOCAL_NED. PX4 OFFBOARD acceleration control performs gravity compensation, thrust/attitude generation and onboard stabilization. The FORCE bit is clear. The adapter streams at 50 Hz and primes the offboard stream for over one second before requesting OFFBOARD. AUTO.TAKEOFF, AUTO.LOITER and AUTO.LAND use controller modes; firmware mode telemetry confirms transitions. Controller State and ExtendedState provide arming and landed feedback, not keyboard events. The existing landing coordinator observes the real adapter status and gates ground disarming.
+
+Stereo VO is forwarded as MAVROS vision pose with a required measured covariance diagonal; no negative covariance sentinel is sent into PX4. The controller EKF must be configured and commissioned to fuse external vision. Readiness checks compare the local EKF position and heading to the VO map and require fresh controller IMU. This does not add a second Python estimator.
+
+## Required physical commissioning
+
+Create the JSON file named by `deployment.commissioning_record`. Required fields are `technician`, `date`, `controller_uid`, `firmware_version` and documented test references (strings) for `manual_recovery_test`, `offboard_loss_test`, `wifi_loss_test`, `landing_detector_test`, `frame_alignment_test`, `stereo_timing_test`, `vehicle_envelope_test`, `takeoff_corridor_test`, `vision_covariance_test`, and `tracker_tuning_test`. Include `verified_parameters` as an object containing the exact parameter-name/value snapshot configured in the adapter. A record is evidence supplied by the commissioning operator, not an automatic certification.
+
+1. Identify the actual board/firmware. Use a compatible PX4 multicopter controller if the existing board cannot provide the required interface. Record the live UID and packed firmware version. The adapter compares these against actual MAVROS VehicleInfo feedback and requires PX4/quadcopter identity.
+2. Measure intrinsics, stereo rotation/baseline, resolution, camera mounting and initial body attitude/origin. Validate disparity scale, range, outliers, camera order, synchronization tolerance and latency on the real OV9281 devices. Preserve existing capture/calibration utilities.
+3. Measure the VO covariance, gravity alignment and navigation reference against independent ground truth. Configure PX4 external-vision EKF fusion, validate reset/drift behavior and check controller/VO position and yaw agreement. Loss of VO is latched by the existing estimator; recover on the ground.
+4. Measure vehicle envelope, safety clearance, braking deceleration and dynamic limits. Tune the existing PD gains on the physical system. Confirm the stereo field of view observes the entire swept volume and inflated envelope; otherwise add sensing or limit the mission. Establish an independently clear takeoff/landing corridor because AUTO modes do not use this application's obstacle planner.
+5. Configure and physically verify pilot recovery, an independent mode switch, RC loss, offboard loss, and onboard-computer loss. Populate exact firmware parameter names/values including COM_OF_LOSS_T, COM_OBL_RC_ACT, COM_RC_LOSS_T, NAV_RCL_ACT, MIS_TAKEOFF_ALT and EKF2_EV_CTRL. Values are read back through MAVROS ROS 2 parameter services; the software does not install guessed defaults. Configure the zero-based RC authorization channel and measured pulse range. Verify pilot mode changes suppress re-entry into autonomy.
+6. With props removed first, validate controller command/ACK semantics, mode changes, channel polarity, axis signs, bounded acceleration and watchdog timing. Then perform appropriately restrained commissioning with independent pilot recovery: takeoff, hold, emergency landing, touchdown detection and disarming. Verify Wi-Fi loss and worker/planner failures physically. Record results before filling the commissioning artifact.
+
+Current blockers are unavailable controller identity/capability evidence, missing measured calibration/limits/noise/commissioning artifacts, untested real firmware integration, and potentially insufficient stereo free-volume coverage. A successful build does not resolve them. No physical flight, motor output, camera acquisition or hardware recovery was tested during software development.
+
+## Software validation performed
+
+The requested upstream HEAD and the initial local checkout both resolved to `1317e270e2476c54c9f09b72f462e94b24721db9` before these uncommitted changes. Six ROS packages built in a Linux amd64 Jazzy container with MAVROS 2.16.0. The final C++ adapter compiled; native navigation, trajectory-tracker and command-gate CTest suites passed, including unknown-space envelope inflation. Thirty-six targeted local Python checks passed; twenty-eight overlapping protocol/landing/real UDP-ROS checks passed inside Linux. Actual ROS parameter parsing, physical launch imports, Python syntax, shell syntax and C++ formatting were checked. These checks did not exercise ARM64 hardware, the Mac webcam/UI, real camera synchronization, firmware modes, motor output or physical flight.

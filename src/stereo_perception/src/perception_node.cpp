@@ -124,7 +124,20 @@ class PerceptionNode final : public rclcpp::Node {
       for (int j = 0; j < 3; ++j)
         raw_from_rectified(i, j) = calibration.r_left.at<double>(j, i);
     body_from_camera_ = body_from_raw_camera_ * raw_from_rectified;
+    const auto initial_rotation =
+        declare_parameter("initial_body_rotation_vector", std::vector<double>{0, 0, 0});
+    if (initial_rotation.size() != 3)
+      throw std::invalid_argument("initial body rotation requires three values");
+    for (double v : initial_rotation)
+      if (!std::isfinite(v))
+        throw std::invalid_argument("invalid initial body rotation");
+    cv::Matx33d initial_matrix;
+    cv::Rodrigues(cv::Vec3d(initial_rotation[0], initial_rotation[1], initial_rotation[2]),
+                  initial_matrix);
     cv::Matx44d initial_body = cv::Matx44d::eye();
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        initial_body(i, j) = initial_matrix(i, j);
     for (int i = 0; i < 3; ++i)
       initial_body(i, 3) = initial_position[i];
     estimator_.reset(initial_body * body_from_camera_);

@@ -117,3 +117,12 @@ TEST(VoxelMap, RayIntegrationAndInflation) {
   EXPECT_TRUE(inflated.occupied({2.1, .35, .1}));
   EXPECT_EQ(map.at({15, 15, 15}), Occupancy::kUnknown);
 }
+
+TEST(PhysicalVisibility, UnknownSpaceReservesTheVehicleEnvelope) {
+  robotics::navigation::VoxelMap map({0, 0, 0}, {4, 4, 4}, .25,
+                                     robotics::navigation::Occupancy::kFree);
+  map.set({2, 2, 2}, robotics::navigation::Occupancy::kUnknown);
+  EXPECT_FALSE(map.inflated(.5).occupied({2.25, 2, 2}));
+  EXPECT_TRUE(map.inflated(.5, true).occupied({2.25, 2, 2}));
+  EXPECT_FALSE(map.inflated(.5, true).occupied({1, 1, 1}));
+}

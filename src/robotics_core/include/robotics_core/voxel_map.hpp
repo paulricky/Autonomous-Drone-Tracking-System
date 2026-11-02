@@ -24,7 +24,7 @@ class VoxelMap {
                      bool endpoint_is_hit = true);
   // Batch semantics: occupied endpoints take priority over free rays in the same frame.
   void integrate_cloud(const Vec3& origin, const std::vector<Vec3>& endpoints, double max_range);
-  VoxelMap inflated(double radius) const;
+  VoxelMap inflated(double radius, bool inflate_unknown = false) const;
   bool segment_occupied(const Vec3& a, const Vec3& b, double spacing,
                         bool unknown_is_occupied = true, std::size_t* checks = nullptr) const;
   std::vector<Vec3> occupied_centers() const;
