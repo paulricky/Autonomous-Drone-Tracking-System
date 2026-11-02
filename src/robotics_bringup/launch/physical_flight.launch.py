@@ -27,7 +27,7 @@ def start(context):
     record = json.loads(record_path.read_text())
     required = ('technician', 'date', 'controller_uid', 'firmware_version', 'manual_recovery_test',
                 'offboard_loss_test', 'wifi_loss_test', 'landing_detector_test', 'frame_alignment_test',
-                'stereo_timing_test', 'vehicle_envelope_test', 'takeoff_corridor_test', 'vision_covariance_test', 'tracker_tuning_test')
+                'stereo_timing_test', 'vehicle_envelope_test', 'takeoff_corridor_test', 'vision_covariance_test', 'tracker_tuning_test', 'takeoff_mode_test', 'flight_volume_test')
     if any(not record.get(key) for key in required):
         raise ValueError('commissioning record incomplete: '+str(required))
     for key in required:
@@ -36,6 +36,10 @@ def start(context):
     adapter = data['physical_flight_adapter']['ros__parameters']
     if str(record['controller_uid']) != adapter['controller_uid'] or record['firmware_version'] != adapter['firmware_version']:
         raise ValueError('commissioning identity does not match configured controller')
+    if not adapter.get('valid_takeoff_modes') or record.get('valid_takeoff_modes') != adapter['valid_takeoff_modes']:
+        raise ValueError('valid takeoff modes require a matching commissioned controller-mode record')
+    if len(adapter['verified_parameter_names']) != len(adapter['verified_parameter_values']) or len(set(adapter['verified_parameter_names'])) != len(adapter['verified_parameter_names']):
+        raise ValueError('controller parameter snapshot requires unique names and matching values')
     values = dict(zip(adapter['verified_parameter_names'], adapter['verified_parameter_values']))
     if record.get('verified_parameters') != values:
         raise ValueError('controller parameter snapshot differs from commissioning record')
@@ -54,6 +58,16 @@ def start(context):
         value = autonomy.get(key)
         if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
             raise ValueError('measured vehicle limit required: '+key)
+    lower, upper = autonomy.get('map_minimum'), autonomy.get('map_maximum')
+    for key, bounds in (('map_minimum', lower), ('map_maximum', upper)):
+        if not isinstance(bounds, list) or len(bounds) != 3 or any(type(v) not in (int, float) or not math.isfinite(v) for v in bounds):
+            raise ValueError('measured flight-volume bounds required: '+key)
+        if record.get(key) != bounds:
+            raise ValueError('flight volume differs from commissioning record: '+key)
+    if any(a >= b for a, b in zip(lower, upper)):
+        raise ValueError('flight volume minimum must be below maximum on every axis')
+    if autonomy['max_acceleration'] > adapter['max_acceleration_mps2']:
+        raise ValueError('native tracking acceleration exceeds commissioned controller bound')
     if data['operator_receiver']['ros__parameters'].get('reference_frame_id') in ('', 'UNCONFIGURED', None):
         raise ValueError('commissioned laptop reference identifier required')
     key = Path(data['operator_receiver']['ros__parameters']['key_file'])
@@ -64,7 +78,7 @@ def start(context):
     perception = Node(package='stereo_perception', executable='perception_node', parameters=[str(config)], output='screen')
     planner = Node(package='robotics_core', executable='physical_navigation_node', parameters=[str(config)], output='screen')
     supervisor = Node(package='robotics_core', executable='px4_flight_adapter_node', parameters=[str(config)], output='screen')
-    receiver = Node(package='flight_mission', executable='operator_receiver', parameters=[str(config)], output='screen')
+    receiver = Node(package='robotics_core', executable='operator_receiver_node', parameters=[str(config)], output='screen')
     nodes = [camera, perception, planner, supervisor, receiver]
     # Do not tear down the flight supervisor when a sensor/planner exits. Its watchdog lands.
     handlers = [RegisterEventHandler(OnProcessExit(target_action=node, on_exit=[LogInfo(msg='ERROR: Physical flight component exited; recovery supervisor/controller watchdog remains responsible')])) for node in nodes]

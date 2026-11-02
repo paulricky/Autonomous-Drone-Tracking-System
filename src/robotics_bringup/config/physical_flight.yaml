@@ -43,6 +43,8 @@ autonomy_pipeline:
     use_perception_map: true
     unknown_is_free: false
     hardware_output_enabled: false
+    map_minimum: []
+    map_maximum: []
     vehicle_clearance_m: 0.0
     braking_acceleration_mps2: 0.0
     max_velocity: 0.0
@@ -60,6 +62,7 @@ deployment:
     commissioning_record: /var/lib/robotics/config/commissioning.json
 physical_flight_adapter:
   ros__parameters:
+    valid_takeoff_modes: []
     controller_uid: UNCONFIGURED
     firmware_version: 0
     pilot_enable_channel: -1

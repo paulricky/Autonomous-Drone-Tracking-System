@@ -187,6 +187,12 @@ class AutonomyNode final : public rclcpp::Node {
         get_parameter("braking_acceleration_mps2").as_double() <= 0)
       throw std::invalid_argument("invalid vehicle envelope or map bounds");
     map_ = nav::VoxelMap({lo[0], lo[1], lo[2]}, {hi[0], hi[1], hi[2]}, .25, nav::Occupancy::kFree);
+    controller_active_sub_ = create_subscription<std_msgs::msg::Bool>(
+        "flight/navigation_active", rclcpp::QoS(1).transient_local().reliable(),
+        [this](std_msgs::msg::Bool::SharedPtr m) {
+          controller_active_ = m->data;
+          controller_active_time_ = now().seconds();
+        });
     enable_sub_ = create_subscription<std_msgs::msg::Bool>(
         "mission/navigation_enabled", 1, [this](std_msgs::msg::Bool::SharedPtr m) {
           if (!m->data && navigation_enabled_) {
@@ -336,7 +342,9 @@ class AutonomyNode final : public rclcpp::Node {
     state_valid_ = m.valid;
   }
   void on_cloud(const sensor_msgs::msg::PointCloud2& m) {
-    if (m.header.frame_id != "map" || now().seconds() - rclcpp::Time(m.header.stamp).seconds() > .5)
+    double stamp = rclcpp::Time(m.header.stamp).seconds();
+    if (m.header.frame_id != "map" || stamp <= last_map_stamp_ || stamp > now().seconds() ||
+        now().seconds() - stamp > .5)
       return;
     {
       std::lock_guard<std::mutex> l(mu_);
@@ -554,6 +562,16 @@ class AutonomyNode final : public rclcpp::Node {
   void control() {
     if (landing_latched_)
       return;
+#ifdef ROBOTICS_PHYSICAL
+    if (!navigation_enabled_ || !controller_active_ ||
+        now().seconds() - controller_active_time_ > .25) {
+      if (trajectory_) {
+        trajectory_.reset();
+        attempted_ = true;
+      }
+      return;
+    }
+#endif
     nav::PlanningState s;
     bool valid;
     {
@@ -561,6 +579,16 @@ class AutonomyNode final : public rclcpp::Node {
       s = state_;
       valid = state_valid_;
     }
+#ifdef ROBOTICS_PHYSICAL
+    if (valid && nav::norm(s.velocity) > get_parameter("max_velocity").as_double() + 1e-6) {
+      publish_status("failed:measured velocity exceeds commissioned limit");
+      brake();
+      trajectory_.reset();
+      attempted_ = true;
+      finish_action(false, "measured velocity exceeds commissioned limit");
+      return;
+    }
+#endif
     if (cancel_requested_ && active_goal_) {
       brake();
       publish_status("cancelled:operator request");
@@ -825,7 +853,9 @@ class AutonomyNode final : public rclcpp::Node {
   }
   rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr intent_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_sub_;
-  bool navigation_enabled_{};
+  bool navigation_enabled_{}, controller_active_{};
+  double controller_active_time_{};
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr controller_active_sub_;
   nav::Vec3 last_direction_{};
   double last_intent_{}, declare_lookahead_{1};
   nav::VoxelMap map_;

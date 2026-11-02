@@ -126,3 +126,12 @@ TEST(PhysicalVisibility, UnknownSpaceReservesTheVehicleEnvelope) {
   EXPECT_TRUE(map.inflated(.5, true).occupied({2.25, 2, 2}));
   EXPECT_FALSE(map.inflated(.5, true).occupied({1, 1, 1}));
 }
+
+TEST(PhysicalVisibility, VehicleEnvelopeCannotCrossTheFlightVolumeBoundary) {
+  robotics::navigation::VoxelMap map({0, 0, 0}, {4, 4, 4}, .25,
+                                     robotics::navigation::Occupancy::kFree);
+  auto safe = map.inflated(.5, true);
+  EXPECT_TRUE(safe.occupied({.1, 2, 2}));
+  EXPECT_TRUE(safe.occupied({3.9, 2, 2}));
+  EXPECT_FALSE(safe.occupied({2, 2, 2}));
+}

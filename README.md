@@ -2,7 +2,7 @@
 
 ## Physical flight entry points
 
-The commissioned hardware application is `python3 scripts/run_drone.py`; the external Mac interface is `python3 scripts/run_hand_control.py --host <PI_IP>`. Keyboard controls include S, A, T then Y, Space, L, E, D and Q. Startup never arms or takes off.
+The commissioned hardware application is `python3 scripts/run_drone.py`; the external Mac interface is `python3 scripts/run_hand_control.py --host <PI_IP>`. Keyboard controls include S, A, T, Space, L, E, D and Q. Startup never arms or takes off.
 
 The implemented physical controller path targets **PX4 through MAVROS**. The existing MSP board remains blocked because its autonomous control and landing capabilities are unverified. Configuration templates intentionally prevent flight until measured calibration, controller identity, vehicle limits and commissioning evidence are supplied. See [physical operation and commissioning](docs/physical_flight.md) for installation, exact workflow, limitations and required hardware checks.
 

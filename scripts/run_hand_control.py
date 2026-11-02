@@ -58,12 +58,32 @@ class Connection:
         self.last_ack = 'No command acknowledgement'
         self.enabled = self.started = self.quitting = False
         self.sample = None
+        self.takeoff_key_latched = False
+        self.takeoff_prerequisites = None
+        self.emergency_pending = threading.Event()
+        self.recovery_latched = False
         self.pending = queue.PriorityQueue()
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.loop, daemon=True)
         self.thread.start()
 
     def request(self, command):
+        if self.recovery_latched and command not in ('EMERGENCY', 'LAND', 'DISARM', 'QUIT'):
+            return
+        if command == 'TAKEOFF':
+            drone = self.status.get('status', {})
+            prerequisites = tuple(drone.get(k) for k in ('armed', 'ready', 'ground', 'mode', 'identity_verified')) + (self.enabled,)
+            if self.takeoff_key_latched or prerequisites == self.takeoff_prerequisites:
+                return
+            self.takeoff_prerequisites = prerequisites
+        if command in ('EMERGENCY', 'LAND', 'HOLD', 'QUIT'):
+            self.started = True
+        if command == 'EMERGENCY':
+            self.recovery_latched = True
+            self.enabled = False
+            self.sample = None
+            self.emergency_pending.set()
+            return
         if command == 'ENABLE':
             self.started = True
         if command in ('EMERGENCY', 'LAND', 'HOLD', 'QUIT'):
@@ -80,6 +100,8 @@ class Connection:
         last_send = 0
         retry = None
         pending_sequence = -1
+        emergency_sequence = -1
+        last_emergency = 0
         while True:
             try:
                 now = time.monotonic()
@@ -89,7 +111,13 @@ class Connection:
                     if now-last_send > .2:
                         self.send('HELLO')
                         last_send = now
-                if self.session:
+                if self.session and self.emergency_pending.is_set():
+                    if now-last_emergency >= .1:
+                        self.send('EMERGENCY')
+                        emergency_sequence = self.seq
+                        last_emergency = now
+                    retry = None
+                if self.session and not self.emergency_pending.is_set():
                     try:
                         _, _, command = self.pending.get_nowait()
                         retry = (command, now, now + 2)
@@ -97,8 +125,7 @@ class Connection:
                         pass
                     if retry and now >= retry[1]:
                         cmd = retry[0]
-                        confirmation = self.status.get('confirmation') if cmd == 'TAKEOFF' else None
-                        self.send(cmd, confirmation=confirmation)
+                        self.send(cmd)
                         pending_sequence = self.seq
                         retry = (cmd, now+.15, retry[2]) if now < retry[2] else None
                     if now-last_send > .1:
@@ -121,9 +148,14 @@ class Connection:
                     self.last_reply = time.monotonic()
                     self.status = m
                     result = m.get('result', '')
+                    if result.startswith('takeoff requested'):
+                        self.takeoff_key_latched = True
+                        retry = None
+                    if m.get('request_seq') == emergency_sequence and m.get('latched'):
+                        self.emergency_pending.clear()
                     if result != 'heartbeat' and not result.startswith(('intent accepted', 'REJECTED direction')):
                         self.last_ack = result
-                    self.enabled = m.get('enabled', False)
+                    self.enabled = m.get('enabled', False) and not self.recovery_latched
                     if retry and m.get('request_seq') == pending_sequence:
                         retry = None
                 except socket.timeout:
@@ -151,7 +183,7 @@ def main():
     worker.start()
     connection = Connection(args.host, args.port, read_key(args.key_file))
     frame = np.zeros((600, 1000, 3), dtype=np.uint8)
-    controls = {ord('s'): 'ENABLE', ord('a'): 'ARM', ord('t'): 'PREPARE_TAKEOFF', ord('y'): 'TAKEOFF',
+    controls = {ord('s'): 'ENABLE', ord('a'): 'ARM', ord('t'): 'TAKEOFF',
                 32: 'HOLD', ord('l'): 'LAND', ord('e'): 'EMERGENCY', ord('d'): 'DISARM', ord('q'): 'QUIT'}
     window = 'Drone operator'
     cv2.namedWindow(window)
@@ -173,7 +205,7 @@ def main():
             connected = time.monotonic()-connection.last_reply < .5
             drone = status.get('status', {})
             lines = [
-                'S enable | A arm | T then Y confirm takeoff | Space hold',
+                'S enable | A arm | T request takeoff | Space hold',
                 'L land | E emergency | D disarm on ground | Q safe quit',
                 f'Wi-Fi: {"connected" if connected else "disconnected / press S"} | hand authorized: {connection.enabled}',
                 f'Ready: {drone.get("ready", False)} | sensors: {drone.get("sensors_available", False)} | localization: {drone.get("localization_valid", False)}',

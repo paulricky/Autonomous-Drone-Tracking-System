@@ -153,22 +153,19 @@ class OperatorReceiver(Node):
                     self.op('DISARM')
                 return 'disarm requested; awaiting controller feedback'
             return 'REJECTED: ground not confirmed'
-        if command in ('ARM', 'PREPARE_TAKEOFF', 'TAKEOFF'):
+        if command in ('ARM', 'TAKEOFF'):
             if not (self.fresh() and self.enabled and not self.latched and self.status.get('ready')):
                 return 'REJECTED: authorization/readiness incomplete'
             if command == 'ARM' and not self.arm_sent and not self.status.get('armed'):
                 self.arm_sent = True
                 self.op('ARM')
                 return 'arm requested; awaiting controller feedback'
-            if command == 'PREPARE_TAKEOFF' and self.status.get('armed') and not self.takeoff_sent and self.status.get('ground'):
-                self.confirmation = (secrets.token_hex(16), time.monotonic() + 4)
-                return 'press Y within four seconds to confirm takeoff'
-            if command == 'TAKEOFF' and self.confirmation and m.get('confirmation') == self.confirmation[0] and time.monotonic() < self.confirmation[1] and self.status.get('armed') and not self.takeoff_sent:
+            if command == 'TAKEOFF' and self.arm_sent and self.status.get('armed') and self.status.get('ground') and self.status.get('takeoff_allowed') and not self.takeoff_sent:
                 self.confirmation = None
                 self.takeoff_sent = True
                 self.op('TAKEOFF')
                 return 'takeoff requested; awaiting controller flight feedback'
-            return 'REJECTED: invalid/repeated transition or missing confirmation'
+            return 'REJECTED: invalid/repeated transition'
         if command == 'DIRECTION':
             d = m.get('direction', [])
             if (not self.enabled or self.latched or not self.fresh() or not self.status.get('ready') or
