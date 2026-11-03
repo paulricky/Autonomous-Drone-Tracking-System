@@ -6,7 +6,7 @@ RUN test "$TARGETARCH" = "amd64" -o "$TARGETARCH" = "arm64"
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential cmake python3-colcon-common-extensions python3-rosdep \
     python3-numpy python3-scipy python3-yaml python3-matplotlib \
-    libopencv-dev v4l-utils \
+    libopencv-dev nlohmann-json3-dev v4l-utils \
     ros-jazzy-cv-bridge ros-jazzy-image-transport ros-jazzy-camera-info-manager \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt/robotics/workspace

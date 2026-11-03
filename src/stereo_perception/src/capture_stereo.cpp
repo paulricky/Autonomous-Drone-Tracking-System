@@ -10,7 +10,8 @@
 
 int main(int argc, char** argv) {
   if (argc != 9 && argc != 10) {
-    std::cerr << "usage: capture_stereo LEFT_DEVICE RIGHT_DEVICE WIDTH HEIGHT FPS MAX_DELTA_MS COUNT OUTPUT_DIR [FOURCC]\n";
+    std::cerr << "usage: capture_stereo LEFT_DEVICE RIGHT_DEVICE WIDTH HEIGHT FPS MAX_DELTA_MS "
+                 "COUNT OUTPUT_DIR [FOURCC]\n";
     return 2;
   }
   try {
@@ -19,17 +20,17 @@ int main(int argc, char** argv) {
     const int width = std::stoi(argv[3]), height = std::stoi(argv[4]), count = std::stoi(argv[7]);
     const double fps = std::stod(argv[5]), tolerance = std::stod(argv[6]) / 1000.;
     if (left == right || left.find("UNCONFIGURED") != std::string::npos ||
-        right.find("UNCONFIGURED") != std::string::npos ||
-        !fs::exists(left) || !fs::exists(right) || fs::equivalent(left, right) ||
+        right.find("UNCONFIGURED") != std::string::npos || !fs::exists(left) ||
+        !fs::exists(right) || fs::equivalent(left, right) ||
         (left.rfind("/dev/v4l/by-id/", 0) != 0 && left.rfind("/dev/v4l/by-path/", 0) != 0) ||
         (right.rfind("/dev/v4l/by-id/", 0) != 0 && right.rfind("/dev/v4l/by-path/", 0) != 0) ||
-        width < 16 || height < 16 ||
-        !std::isfinite(fps) || fps <= 0 || fps > 240 || !std::isfinite(tolerance) ||
-        tolerance <= 0 || count < 8 || count > 10000)
+        width < 16 || height < 16 || !std::isfinite(fps) || fps <= 0 || fps > 240 ||
+        !std::isfinite(tolerance) || tolerance <= 0 || count < 8 || count > 10000)
       throw std::invalid_argument("invalid capture devices or settings");
     const fs::path output(argv[8]);
     if (fs::exists(output) && !fs::is_empty(output))
-      throw std::invalid_argument("capture output must be new or empty; existing measurements are preserved");
+      throw std::invalid_argument(
+          "capture output must be new or empty; existing measurements are preserved");
     fs::create_directories(output);
     int fourcc = 0;
     if (argc == 10) {
@@ -49,7 +50,8 @@ int main(int argc, char** argv) {
       std::cout << "Position the stationary checkerboard at a new pose, then press Enter for pair "
                 << accepted << '/' << count << std::endl;
       std::string input;
-      if (!std::getline(std::cin, input)) break;
+      if (!std::getline(std::cin, input))
+        break;
       bool saved = false;
       for (int attempt = 0; attempt < 20; ++attempt) {
         // Independent USB cameras must be acquired concurrently. Sequential blocking
@@ -69,7 +71,8 @@ int main(int argc, char** argv) {
         saved = true;
         break;
       }
-      if (!saved) break;
+      if (!saved)
+        break;
     }
     std::cout << "accepted_pairs=" << accepted << " requested_pairs=" << count << '\n';
     return accepted == count ? 0 : 1;

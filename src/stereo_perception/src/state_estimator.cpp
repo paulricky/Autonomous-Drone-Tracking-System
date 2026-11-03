@@ -33,15 +33,14 @@ EstimatedState StateEstimator::update(const OdometryResult& o, double stamp) {
     for (int j = 0; j < 3; ++j)
       rotation(i, j) = o.previous_to_current(i, j);
   const bool geometry_valid = cv::checkRange(cv::Mat(o.previous_to_current)) &&
-      cv::norm(rotation * rotation.t() - cv::Matx33d::eye()) <= 1e-3 &&
-      std::abs(cv::determinant(rotation) - 1.) <= 1e-3 &&
-      std::abs(o.previous_to_current(3, 0)) <= 1e-9 &&
-      std::abs(o.previous_to_current(3, 1)) <= 1e-9 &&
-      std::abs(o.previous_to_current(3, 2)) <= 1e-9 &&
-      std::abs(o.previous_to_current(3, 3) - 1.) <= 1e-9;
+                              cv::norm(rotation * rotation.t() - cv::Matx33d::eye()) <= 1e-3 &&
+                              std::abs(cv::determinant(rotation) - 1.) <= 1e-3 &&
+                              std::abs(o.previous_to_current(3, 0)) <= 1e-9 &&
+                              std::abs(o.previous_to_current(3, 1)) <= 1e-9 &&
+                              std::abs(o.previous_to_current(3, 2)) <= 1e-9 &&
+                              std::abs(o.previous_to_current(3, 3) - 1.) <= 1e-9;
   if (lost_ || !o.valid || o.inliers < 20 || !std::isfinite(o.reprojection_error) ||
-      o.reprojection_error < 0 || o.reprojection_error > 1.5 ||
-      dt > .5 || !geometry_valid) {
+      o.reprojection_error < 0 || o.reprojection_error > 1.5 || dt > .5 || !geometry_valid) {
     lost_ = true;
     state_.quality = LocalizationQuality::lost;
     state_.velocity = {};

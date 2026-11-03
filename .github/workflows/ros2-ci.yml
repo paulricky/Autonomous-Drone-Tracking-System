@@ -17,7 +17,7 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
           python3 -m venv --system-site-packages /tmp/robotics-venv
-          /tmp/robotics-venv/bin/python -m pip install -e '.[dev]'
+          /tmp/robotics-venv/bin/python -m pip install -e '.[dev,mujoco]'
       - name: Python regression tests
         run: /tmp/robotics-venv/bin/python -m pytest -q
       - name: Build

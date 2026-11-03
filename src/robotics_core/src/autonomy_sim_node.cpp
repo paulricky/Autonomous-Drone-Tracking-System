@@ -421,12 +421,11 @@ class AutonomyNode final : public rclcpp::Node {
     planner_status_->publish(ps);
     const auto pipeline_begin = std::chrono::steady_clock::now();
     std::lock_guard<std::mutex> map_lock(map_mu_);
-    // Plan with additional reserve for later stereo observations; active safety
-    // validation retains the 0.25 m physical envelope and never ignores collisions.
+    // Simulation reserves extra room for later observations above its 0.25 m envelope.
+    // Physical mode always includes the configured vehicle clearance and braking reserve.
+    const bool physical = get_parameter("system_mode").as_string() == "physical";
     nav::VoxelMap collision_map =
-        use_perception_map_
-            ? map_.inflated(clearance(), get_parameter("system_mode").as_string() == "physical")
-            : map_;
+        use_perception_map_ ? map_.inflated(physical ? clearance() : .5, physical) : map_;
     RCLCPP_INFO(get_logger(),
                 "planning state=(%.3f,%.3f,%.3f) velocity=(%.3f,%.3f,%.3f) occupied=%zu",
                 start.position[0], start.position[1], start.position[2], start.velocity[0],
@@ -826,10 +825,9 @@ class AutonomyNode final : public rclcpp::Node {
   }
   bool active_unsafe(double elapsed) {
     std::lock_guard<std::mutex> map_lock(map_mu_);
+    const bool physical = get_parameter("system_mode").as_string() == "physical";
     auto collision_map =
-        use_perception_map_
-            ? map_.inflated(clearance(), get_parameter("system_mode").as_string() == "physical")
-            : map_;
+        use_perception_map_ ? map_.inflated(physical ? clearance() : .25, physical) : map_;
     for (double t = std::max(0., elapsed); t <= trajectory_->duration(); t += .03)
       if (collision_map.occupied(trajectory_->position(t)))
         return true;

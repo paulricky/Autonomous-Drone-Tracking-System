@@ -1,15 +1,15 @@
 #include <algorithm>
-#include <chrono>
-#include <filesystem>
-#include <iterator>
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <chrono>
 #include <cv_bridge/cv_bridge.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <filesystem>
+#include <iterator>
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <thread>
 
 #include "stereo_perception/stereo_pipeline.hpp"
 namespace ep = robotics::perception;
@@ -20,7 +20,8 @@ class UvcStereoNode final : public rclcpp::Node {
     auto left = declare_parameter("left_device", "/dev/v4l/by-id/LEFT_OV9281_UNCONFIGURED");
     auto right = declare_parameter("right_device", "/dev/v4l/by-id/RIGHT_OV9281_UNCONFIGURED");
     auto file = declare_parameter("calibration_file", "");
-    const auto timestamp_policy = declare_parameter("timestamp_policy", "host_monotonic_receipt_ros_mapped");
+    const auto timestamp_policy =
+        declare_parameter("timestamp_policy", "host_monotonic_receipt_ros_mapped");
     left_frame_ = declare_parameter("left_frame_id", "left_camera_optical_frame");
     right_frame_ = declare_parameter("right_frame_id", "right_camera_optical_frame");
     int width = declare_parameter("width", 640), height = declare_parameter("height", 480);
@@ -33,8 +34,7 @@ class UvcStereoNode final : public rclcpp::Node {
     if (!std::filesystem::exists(left) || !std::filesystem::exists(right))
       throw std::invalid_argument("one or both configured camera device paths are unavailable");
     if (width < 16 || height < 16 || width > 4096 || height > 4096 || !std::isfinite(fps) ||
-        fps <= 0 || fps > 240 || left == right ||
-        left_frame_ != "left_camera_optical_frame" ||
+        fps <= 0 || fps > 240 || left == right || left_frame_ != "left_camera_optical_frame" ||
         right_frame_ != "right_camera_optical_frame" ||
         timestamp_policy != "host_monotonic_receipt_ros_mapped" ||
         (left.rfind("/dev/v4l/by-id/", 0) != 0 && left.rfind("/dev/v4l/by-path/", 0) != 0) ||
@@ -46,7 +46,8 @@ class UvcStereoNode final : public rclcpp::Node {
     if (calibration.provenance != "OpenCV chessboard stereo calibration" ||
         calibration.rms_error > 1.0 || calibration.left_rms_error > 1.0 ||
         calibration.right_rms_error > 1.0)
-      throw std::invalid_argument("physical operation requires measured, quality-checked stereo calibration");
+      throw std::invalid_argument(
+          "physical operation requires measured, quality-checked stereo calibration");
     if (calibration.left_camera_id.empty() || calibration.left_camera_id != left ||
         calibration.right_camera_id != right)
       throw std::invalid_argument("camera device identities do not match measured calibration");
@@ -85,8 +86,10 @@ class UvcStereoNode final : public rclcpp::Node {
   }
   ~UvcStereoNode() override {
     running_ = false;
-    if (left_thread_.joinable()) left_thread_.join();
-    if (right_thread_.joinable()) right_thread_.join();
+    if (left_thread_.joinable())
+      left_thread_.join();
+    if (right_thread_.joinable())
+      right_thread_.join();
   }
 
  private:
@@ -94,9 +97,10 @@ class UvcStereoNode final : public rclcpp::Node {
     // Translate host monotonic reception time into ROS time without labelling it exposure time.
     std_msgs::msg::Header h;
     const auto ros_anchor = now();
-    const double monotonic_anchor = std::chrono::duration<double>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
-    h.stamp = ros_anchor - rclcpp::Duration::from_seconds(std::max(0., monotonic_anchor - f.receive_time));
+    const double monotonic_anchor =
+        std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    h.stamp = ros_anchor -
+              rclcpp::Duration::from_seconds(std::max(0., monotonic_anchor - f.receive_time));
     h.frame_id = left ? left_frame_ : right_frame_;
     (left ? left_pub_ : right_pub_)->publish(*cv_bridge::CvImage(h, "mono8", f.image).toImageMsg());
     sensor_msgs::msg::CameraInfo info;
@@ -120,12 +124,14 @@ class UvcStereoNode final : public rclcpp::Node {
     auto& camera = left ? left_cam_ : right_cam_;
     while (running_) {
       const auto frame = camera->read();
-      if (frame) publish(*frame, left);
+      if (frame)
+        publish(*frame, left);
       {
         std::lock_guard<std::mutex> lock(stats_mutex_);
         (left ? left_stats_ : right_stats_) = camera->stats();
       }
-      if (!frame) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      if (!frame)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
   void tick() {
@@ -155,8 +161,7 @@ class UvcStereoNode final : public rclcpp::Node {
     add("left_sequence", std::to_string(l.frames));
     add("right_sequence", std::to_string(r.frames));
     add("driver_dropped_frames", "unavailable through OpenCV; receipt-gap estimate only");
-    add("estimated_receipt_drops",
-        std::to_string(l.dropped + r.dropped));
+    add("estimated_receipt_drops", std::to_string(l.dropped + r.dropped));
     add("reconnects", std::to_string(l.reconnects + r.reconnects));
     add("read_failures", std::to_string(l.failures + r.failures));
     a.status.push_back(s);

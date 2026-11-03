@@ -131,8 +131,8 @@ bool StereoCalibration::valid(std::string* reason) const {
       translation.total() != 3 || translation.type() != CV_64F || !cv::checkRange(translation))
     return fail("invalid Q or translation");
   for (const auto& m : {d_left, d_right})
-    if (m.empty() || m.type() != CV_64F || !cv::checkRange(m) ||
-        (m.rows != 1 && m.cols != 1) || m.total() != 5)
+    if (m.empty() || m.type() != CV_64F || !cv::checkRange(m) || (m.rows != 1 && m.cols != 1) ||
+        m.total() != 5)
       return fail("invalid distortion coefficients");
   if (baseline() <= 0 || p_left.at<double>(0, 0) <= 0 || p_left.at<double>(1, 1) <= 0 ||
       std::abs(cv::determinant(rotation) - 1) > 1e-3 || !std::isfinite(rms_error) ||
@@ -141,8 +141,8 @@ bool StereoCalibration::valid(std::string* reason) const {
     return fail("invalid baseline, rotation, or focal length");
   for (const auto& k : {k_left, k_right})
     if (k.at<double>(0, 0) <= 0 || k.at<double>(1, 1) <= 0 ||
-        std::abs(k.at<double>(2, 2) - 1) > 1e-6 ||
-        std::abs(k.at<double>(2, 0)) > 1e-6 || std::abs(k.at<double>(2, 1)) > 1e-6)
+        std::abs(k.at<double>(2, 2) - 1) > 1e-6 || std::abs(k.at<double>(2, 0)) > 1e-6 ||
+        std::abs(k.at<double>(2, 1)) > 1e-6)
       return fail("invalid intrinsic matrix convention");
   if (cv::norm(rotation * rotation.t() - cv::Mat::eye(3, 3, CV_64F)) > 1e-3)
     return fail("non-orthonormal stereo rotation");
@@ -201,9 +201,9 @@ void StereoCalibration::save(const std::string& path) const {
   f << "image_width" << image_size.width << "image_height" << image_size.height << "K_left"
     << k_left << "D_left" << d_left << "K_right" << k_right << "D_right" << d_right << "R"
     << rotation << "T" << translation << "R_left" << r_left << "R_right" << r_right << "P_left"
-    << p_left << "P_right" << p_right << "Q" << q << "rms_error" << rms_error
-    << "left_rms_error" << left_rms_error << "right_rms_error" << right_rms_error << "provenance"
-    << provenance << "left_camera_id" << left_camera_id << "right_camera_id" << right_camera_id;
+    << p_left << "P_right" << p_right << "Q" << q << "rms_error" << rms_error << "left_rms_error"
+    << left_rms_error << "right_rms_error" << right_rms_error << "provenance" << provenance
+    << "left_camera_id" << left_camera_id << "right_camera_id" << right_camera_id;
 }
 StereoCalibration calibrate_chessboard(const std::vector<cv::Mat>& left,
                                        const std::vector<cv::Mat>& right, cv::Size pattern,

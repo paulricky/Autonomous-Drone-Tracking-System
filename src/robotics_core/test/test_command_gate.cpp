@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include <limits>
 
 #include "robotics_core/command_gate.hpp"
@@ -20,8 +21,7 @@ TEST(CommandGate, RejectsInvalidStaleReplayAndRequiresPhysicalHealth) {
   EXPECT_EQ(gate.check_physical(c, 10.12, health), "operator authorization absent");
   health.operator_authorized = true;
   health.controller_connected = true;
-  EXPECT_EQ(gate.check_physical(c, 10.12, health),
-            "physical protocol or configuration unverified");
+  EXPECT_EQ(gate.check_physical(c, 10.12, health), "physical protocol or configuration unverified");
   health.protocol_verified = health.configuration_verified = true;
   EXPECT_EQ(gate.check_physical(c, 10.12, health), "telemetry unavailable or stale");
   health.telemetry_valid = health.estimate_healthy = health.trajectory_valid = true;

@@ -29,6 +29,7 @@ class CommandGate {
   std::string check_common(const CommandSample&, double now) const;
   std::string check_physical(const CommandSample&, double now, const PhysicalHealth&) const;
   void commit(const CommandSample&);
+
  private:
   GateLimits limits_;
   double last_stamp_{};

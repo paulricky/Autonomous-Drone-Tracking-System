@@ -4,8 +4,8 @@
 #include "stereo_perception/stereo_pipeline.hpp"
 int main(int argc, char** argv) {
   if (argc != 9) {
-    std::cerr
-        << "usage: calibrate_stereo LEFT_GLOB RIGHT_GLOB COLUMNS ROWS SQUARE_METERS OUTPUT.yaml LEFT_CAMERA_ID RIGHT_CAMERA_ID\n";
+    std::cerr << "usage: calibrate_stereo LEFT_GLOB RIGHT_GLOB COLUMNS ROWS SQUARE_METERS "
+                 "OUTPUT.yaml LEFT_CAMERA_ID RIGHT_CAMERA_ID\n";
     return 2;
   }
   try {
@@ -37,8 +37,7 @@ int main(int argc, char** argv) {
     std::cout << "stereo_rms_pixels=" << calibration.rms_error
               << " left_rms_pixels=" << calibration.left_rms_error
               << " right_rms_pixels=" << calibration.right_rms_error
-              << " baseline_m=" << calibration.baseline()
-              << " usable_fraction=" << usable << '\n';
+              << " baseline_m=" << calibration.baseline() << " usable_fraction=" << usable << '\n';
   } catch (const std::exception& e) {
     std::cerr << e.what() << '\n';
     return 1;
