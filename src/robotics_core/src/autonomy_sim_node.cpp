@@ -272,7 +272,7 @@ class AutonomyNode final : public rclcpp::Node {
         [this](const rclcpp_action::GoalUUID&, std::shared_ptr<const Navigate::Goal> g) {
           const auto& p = g->goal.pose.position;
           const bool accepted =
-              !landing_latched_ && !active_goal_ && !goal_reserved_ &&
+              !landing_latched_ && sensor_loss_at_ == 0 && !active_goal_ && !goal_reserved_ &&
               (g->goal.header.frame_id.empty() || g->goal.header.frame_id == "map") &&
               std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
           if (accepted)
@@ -561,6 +561,14 @@ class AutonomyNode final : public rclcpp::Node {
   void control() {
     if (landing_latched_)
       return;
+    if (sensor_loss_at_ > 0) {
+      // Keep the simulator running long enough to complete and observe its bounded stop.
+      // This latch prevents old references or a new goal from resuming motion.
+      brake();
+      if (now().seconds() - sensor_loss_at_ >= 2.0)
+        rclcpp::shutdown();
+      return;
+    }
 #ifdef ROBOTICS_PHYSICAL
     if (!navigation_enabled_ || !controller_active_ ||
         now().seconds() - controller_active_time_ > .25) {
@@ -622,15 +630,38 @@ class AutonomyNode final : public rclcpp::Node {
       publish_status("waiting:perception map");
       return;
     }
+    if (get_parameter("system_mode").as_string() == "simulation" && trajectory_ &&
+        now().seconds() - trajectory_start_.seconds() < .5 &&
+        (s.stamp < trajectory_start_.seconds() ||
+         (use_perception_map_ && last_map_stamp_ < trajectory_start_.seconds()))) {
+      // Planning blocks this callback group. Hold while queued post-plan observations
+      // arrive, with the same bounded freshness deadline and no tracking commands.
+      brake();
+      return;
+    }
     if (!valid || now().seconds() - s.stamp > .5 ||
         (use_perception_map_ && last_map_stamp_ > 0 &&
          now().seconds() - last_map_stamp_ >
              get_parameter("map_observation_lifetime_s").as_double())) {
       if (trajectory_ || active_goal_) {
+        flight_interfaces::msg::PlannerStatus ps;
+        ps.stamp = now();
+        ps.state = ps.FAILED;
+        ps.detail = "localization or map unavailable";
+        trajectory_.reset();
+        attempted_ = true;
+        {
+          std::lock_guard<std::mutex> lock(reference_mu_);
+          reference_trajectory_.reset();
+        }
         brake();
         publish_status("failed:localization or map unavailable");
+        planner_status_->publish(ps);
         finish_action(false, "localization or map unavailable");
-        rclcpp::shutdown();
+        if (get_parameter("system_mode").as_string() == "simulation")
+          sensor_loss_at_ = now().seconds();
+        else
+          rclcpp::shutdown();
       } else
         publish_status("waiting:localization");
       return;
@@ -853,6 +884,7 @@ class AutonomyNode final : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr enable_sub_;
   bool navigation_enabled_{}, controller_active_{};
   double controller_active_time_{};
+  double sensor_loss_at_{};
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr controller_active_sub_;
   nav::Vec3 last_direction_{};
   double last_intent_{}, declare_lookahead_{1};
