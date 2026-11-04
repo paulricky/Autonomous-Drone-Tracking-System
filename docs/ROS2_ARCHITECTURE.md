@@ -13,7 +13,7 @@ path.
 | `flight_interfaces` | IDL | Navigation action and planner/hardware status |
 | `robotics_core` | C++17 | Native planners, B-splines, tracking, dynamics, voxel mapping, read-only MSP transport and command gating |
 | `stereo_perception` | C++17 | UVC/synthetic/recorded stereo, rectification, depth/clouds, PnP odometry and state estimation |
-| `flight_mission` | Python | Low-rate mission state and cancellation/failure policy |
+| `flight_mission` | Python | Bench landing/readiness interlocks, synthetic navigation action client, and native operator CLI compatibility |
 | `robotics_bringup` | Python launch | Installed simulation and read-only hardware configuration |
 | `robotics_tools` | Python | Offline geometry, hand-goal tooling, and legacy simulation helpers |
 
@@ -23,6 +23,16 @@ and MSP encoder have been removed after native replacements were connected.
 The offline geometric A*, voxel map, waypoint simulation, and MuJoCo tools still
 contain Python computation. They are outside the ROS 2 navigation launch and
 are retained for deterministic simulation, visualization, and reference tests.
+
+Physical flight uses `run_drone.py` -> `drone_supervisor_node` ->
+`physical_flight.launch.py`: native operator reception/session authentication,
+PX4 readiness and flight transitions, stereo perception, and native navigation.
+The legacy `flight_mission operator_receiver` CLI now executes the same C++
+gateway. Python `manager`, `landing`, `state_machine`, `preflight`, and `readiness`
+remain for bench services, synthetic action orchestration, and their safety
+tests; they are not launched by the physical application. The offline geometric
+`astar`, `collision_checker`, `path_utils`, and `planner` modules remain required
+by the planning, hand, Duckiedrone, and MuJoCo simulations.
 
 ## Frames and units
 
